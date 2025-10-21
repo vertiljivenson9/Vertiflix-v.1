@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VERTIFLIX - Streaming Premium</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://upload-widget.cloudinary.com/global/all.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --netflix-red: #e50914;
+            --netflix-black: #141414;
+            --netflix-dark: #181818;
+            --netflix-gray: #808080;
+            --netflix-white: #ffffff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: var(--netflix-black);
+            color: var(--netflix-white);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 50px;
+            background: var(--netflix-black);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .logo {
+            color: var(--netflix-red);
+            font-size: 2rem;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .search-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .search-input {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            width: 250px;
+        }
+
+        .hero {
+            height: 60vh;
+            background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), 
+                       url('https://images.unsplash.com/photo-1489599102910-59206b8ca314?w=1200&q=80');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            padding: 0 50px;
+        }
+
+        .hero-content {
+            max-width: 600px;
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .movies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+            padding: 40px 50px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .movie-card {
+            background: var(--netflix-dark);
+            border-radius: 10px;
+            overflow: hidden;
+            transition: transform 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .movie-card:hover {
+            transform: scale(1.05);
+        }
+
+        .movie-poster {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+        }
+
+        .play-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .movie-card:hover .play-overlay {
+            opacity: 1;
+        }
+
+        .play-icon {
+            font-size: 4rem;
+            color: var(--netflix-white);
+        }
+
+        .movie-info {
+            padding: 15px;
+        }
+
+        .movie-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .movie-details {
+            color: var(--netflix-gray);
+            font-size: 0.9rem;
+        }
+
+        .info-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .info-modal-content {
+            background: #1a1a1a;
+            border-radius: 15px;
+            max-width: 800px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 30px;
+            padding: 30px;
+            position: relative;
+        }
+
+        .info-poster {
+            width: 100%;
+            height: 450px;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+
+        .info-details {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .info-title {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .info-meta {
+            color: #888;
+            margin-bottom: 20px;
+            font-size: 1rem;
+        }
+
+        .info-description {
+            color: #ccc;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .video-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.98);
+            z-index: 3000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .video-container {
+            width: 90%;
+            height: 80%;
+            position: relative;
+        }
+
+        .video-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 8px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--netflix-red);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .btn-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #666;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .admin-panel {
+            display: none;
+            background: #1a1a1a;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 20px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .admin-form {
+            display: grid;
+            gap: 20px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-weight: bold;
+            color: #ccc;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            padding: 12px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background: #2a2a2a;
+            color: white;
+            font-size: 16px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .upload-btn {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .thumbnail-preview {
+            width: 100%;
+            max-width: 300px;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .auth-form {
+            display: none;
+            background: #1a1a1a;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 400px;
+            margin: 50px auto;
+        }
+
+        .auth-switch {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .auth-link {
+            color: var(--netflix-red);
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2rem;
+        }
+
+        @media (max-width: 768px) {
+            .movies-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                padding: 20px;
+            }
+            
+            .navbar {
+                padding: 15px 20px;
+            }
+            
+            .info-modal-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+            
+            .info-poster {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <a href="#" class="logo">VERTIFLIX</a>
+        <div class="search-container">
+            <input type="text" id="search-input" class="search-input" placeholder="Buscar películas...">
+            <button class="btn btn-secondary" onclick="searchMovies()">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1 class="hero-title">Disfruta donde quieras</h1>
+            <p class="hero-description">Millones de películas y series. Sin límites. Sin anuncios.</p>
+        </div>
+    </section>
+
+    <!-- MOVIES GRID -->
+    <div class="movies-grid" id="movies-grid">
+        <div class="loading">Cargando películas...</div>
+    </div>
+
+    <!-- INFO MODAL -->
+    <div id="info-modal" class="info-modal">
+        <div class="info-modal-content">
+            <button class="btn-close" onclick="closeInfoModal()">✖</button>
+            <img id="info-poster" class="info-poster" src="" alt="">
+            <div class="info-details">
+                <h2 id="info-title" class="info-title"></h2>
+                <div id="info-meta" class="info-meta"></div>
+                <p id="info-description" class="info-description"></p>
+                <div class="info-buttons">
+                    <button class="btn btn-primary" onclick="playCurrentMovie()">
+                        <i class="fas fa-play"></i> Reproducir
+                    </button>
+                    <button class="btn btn-secondary" onclick="closeInfoModal()">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIDEO MODAL -->
+    <div id="video-modal" class="video-modal">
+        <div class="video-container">
+            <iframe id="video-iframe" class="video-iframe" 
+                    allow="autoplay; fullscreen" 
+                    allowfullscreen>
+            </iframe>
+            <button class="btn-close" onclick="closeVideoModal()">✖ Cerrar</button>
+        </div>
+    </div>
+
+    <!-- ADMIN PANEL -->
+    <div id="admin-panel" class="admin-panel">
+        <h2 style="color: var(--netflix-red); margin-bottom: 20px; text-align: center;">Panel de Administración</h2>
+        
+        <!-- AUTH FORMS -->
+        <div id="login-form" class="auth-form">
+            <h3>Iniciar Sesión Admin</h3>
+            <form class="admin-form" onsubmit="adminLogin(event)">
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="login-email" required>
+                </div>
+                <div class="form-group">
+                    <label>Contraseña:</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Ingresar</button>
+            </form>
+            <div class="auth-switch">
+                <a href="#" class="auth-link" onclick="showRegisterForm()">Crear cuenta de administrador</a>
+            </div>
+        </div>
+
+        <div id="register-form" class="auth-form">
+            <h3>Registrar Administrador</h3>
+            <form class="admin-form" onsubmit="registerAdmin(event)">
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="register-email" required>
+                </div>
+                <div class="form-group">
+                    <label>Contraseña:</label>
+                    <input type="password" id="register-password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Registrar</button>
+            </form>
+            <div class="auth-switch">
+                <a href="#" class="auth-link" onclick="showLoginForm()">¿Ya tienes cuenta? Iniciar sesión</a>
+            </div>
+        </div>
+
+        <!-- MOVIE MANAGEMENT -->
+        <div id="movie-management" style="display: none;">
+            <h3 style="margin-bottom: 20px;">Agregar Nueva Película</h3>
+            <form class="admin-form" onsubmit="addMovie(event)" id="movie-form">
+                <div class="form-group">
+                    <label>Título:</label>
+                    <input type="text" id="movie-title" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Enlace Google Drive:</label>
+                    <input type="url" id="movie-drive-url" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Thumbnail:</label>
+                    <button type="button" class="upload-btn" onclick="openCloudinaryWidget()">
+                        <i class="fas fa-cloud-upload-alt"></i> Seleccionar Imagen
+                    </button>
+                    <input type="hidden" id="Upload_preset" required>
+                    <img id="thumbnail-preview" class="thumbnail-preview" src="" alt="Vista previa">
+                </div>
+                
+                <div class="form-group">
+                    <label>Categoría:</label>
+                    <select id="movie-category" required>
+                        <option value="">Seleccionar categoría</option>
+                        <option value="acción">Acción</option>
+                        <option value="drama">Drama</option>
+                        <option value="comedia">Comedia</option>
+                        <option value="ciencia ficción">Ciencia Ficción</option>
+                        <option value="terror">Terror</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Año:</label>
+                    <input type="number" id="movie-year" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Duración (minutos):</label>
+                    <input type="number" id="movie-duration" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Descripción:</label>
+                    <textarea id="movie-description" required></textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Agregar Película</button>
+            </form>
+
+            <div id="movies-list" style="margin-top: 30px;">
+                <h3 style="margin-bottom: 15px;">Películas en Catálogo</h3>
+                <div id="admin-movies-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURACIÓN
+        const firebaseConfig = {
+            apiKey: "AIzaSyABU9hwRt5AkxMIz70XQIkElBBMzN0pW2g",
+            authDomain: "vertilflix-1a1c9.firebaseapp.com",
+            databaseURL: "https://vertilflix-1a1c9-default-rtdb.firebaseio.com",
+            projectId: "vertilflix-1a1c9",
+            storageBucket: "vertilflix-1a1c9.firebasestorage.app",
+            messagingSenderId: "687276139071",
+            appId: "1:687276139071:web:035040ac0e42a9e6928e8a"
+        };
+
+        const ADMIN_SECRET_PATH = "admin-8X3k9mLp";
+        const CLOUDINARY_CLOUD_NAME = "dcclzhsim";
+        const CLOUDINARY_UPLOAD_PRESET = "vertiflix";
+
+        // VARIABLES GLOBALES
+        let currentMovie = null;
+        let cloudinaryWidget = null;
+
+        // INICIALIZAR FIREBASE
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const auth = firebase.auth();
+
+        // DETECTAR RUTA SECRETA
+        function checkAdminAccess() {
+            const currentHash = window.location.hash.substring(1);
+            if (currentHash === ADMIN_SECRET_PATH) {
+                document.getElementById('admin-panel').style.display = 'block';
+                showLoginForm();
+            } else {
+                loadMovies();
+            }
+        }
+
+        // CLOUDINARY UPLOAD WIDGET
+        function openCloudinaryWidget() {
+            cloudinaryWidget = cloudinary.createUploadWidget({
+                cloudName: CLOUDINARY_CLOUD_NAME,
+                uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+                sources: ['local'],
+                multiple: false,
+                maxFileSize: 5000000,
+                clientAllowedFormats: ['jpg', 'png', 'jpeg', 'webp']
+            }, (error, result) => {
+                if (!error && result && result.event === "success") {
+                    document.getElementById('movie-thumbnail').value = result.info.secure_url;
+                    document.getElementById('thumbnail-preview').src = result.info.secure_url;
+                    document.getElementById('thumbnail-preview').style.display = 'block';
+                }
+            });
+
+            cloudinaryWidget.open();
+        }
+
+        // SISTEMA DE AUTENTICACIÓN
+        function showLoginForm() {
+            document.getElementById('login-form').style.display = 'block';
+            document.getElementById('register-form').style.display = 'none';
+            document.getElementById('movie-management').style.display = 'none';
+        }
+
+        function showRegisterForm() {
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('register-form').style.display = 'block';
+            document.getElementById('movie-management').style.display = 'none';
+        }
+
+        async function registerAdmin(event) {
+            event.preventDefault();
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+
+            try {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                await database.ref('users/' + userCredential.user.uid).set({
+                    email: email,
+                    role: 'admin',
+                    createdAt: Date.now()
+                });
+                alert('✅ Administrador registrado exitosamente');
+                showMovieManagement();
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function adminLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                alert('✅ Sesión iniciada correctamente');
+                showMovieManagement();
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        function showMovieManagement() {
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('register-form').style.display = 'none';
+            document.getElementById('movie-management').style.display = 'block';
+            loadAdminMovies();
+        }
+
+        // GESTIÓN DE PELÍCULAS
+        async function addMovie(event) {
+            event.preventDefault();
+            
+            const movieData = {
+                title: document.getElementById('movie-title').value,
+                drive_url: document.getElementById('movie-drive-url').value,
+                thumbnail: document.getElementById('movie-thumbnail').value,
+                category: document.getElementById('movie-category').value,
+                year: parseInt(document.getElementById('movie-year').value),
+                duration: parseInt(document.getElementById('movie-duration').value),
+                description: document.getElementById('movie-description').value,
+                createdAt: Date.now()
+            };
+
+            if (!movieData.thumbnail) {
+                alert('❌ Por favor selecciona una imagen para el thumbnail');
+                return;
+            }
+
+            try {
+                const movieId = Date.now().toString();
+                await database.ref('movies/' + movieId).set(movieData);
+                alert('✅ Película agregada exitosamente');
+                document.getElementById('movie-form').reset();
+                document.getElementById('thumbnail-preview').style.display = 'none';
+                loadAdminMovies();
+                loadMovies();
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function loadMovies() {
+            try {
+                const snapshot = await database.ref('movies').once('value');
+                const moviesGrid = document.getElementById('movies-grid');
+                
+                if (!snapshot.exists()) {
+                    moviesGrid.innerHTML = '<div class="loading">No hay películas disponibles</div>';
+                    return;
+                }
+
+                const movies = snapshot.val();
+                moviesGrid.innerHTML = '';
+
+                Object.values(movies).forEach(movie => {
+                    const movieCard = document.createElement('div');
+                    movieCard.className = 'movie-card';
+                    movieCard.onclick = () => showMovieInfo(movie);
+                    
+                    movieCard.innerHTML = `
+                        <div style="position: relative;">
+                            <img src="${movie.thumbnail}" alt="${movie.title}" class="movie-poster">
+                            <div class="play-overlay">
+                                <i class="fas fa-play play-icon"></i>
+                            </div>
+                        </div>
+                        <div class="movie-info">
+                            <h3 class="movie-title">${movie.title}</h3>
+                            <div class="movie-details">
+                                <span>${movie.year}</span>
+                                <span>•</span>
+                                <span>${movie.duration} min</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    moviesGrid.appendChild(movieCard);
+                });
+            } catch (error) {
+                console.error('Error loading movies:', error);
+            }
+        }
+
+        // MOSTRAR INFORMACIÓN DE PELÍCULA
+        function showMovieInfo(movie) {
+            currentMovie = movie;
+            
+            document.getElementById('info-poster').src = movie.thumbnail;
+            document.getElementById('info-title').textContent = movie.title;
+            
+            const metaInfo = `${movie.year} • ${movie.duration} min • ${movie.category}`;
+            document.getElementById('info-meta').textContent = metaInfo;
+            
+            document.getElementById('info-description').textContent = movie.description;
+            document.getElementById('info-modal').style.display = 'flex';
+        }
+
+        function closeInfoModal() {
+            document.getElementById('info-modal').style.display = 'none';
+            currentMovie = null;
+        }
+
+        // REPRODUCIR PELÍCULA
+        function playCurrentMovie() {
+            if (!currentMovie) return;
+            
+            const driveUrl = currentMovie.drive_url;
+            const embedUrl = driveUrl.replace('/view', '/preview') + '?autoplay=1';
+            
+            document.getElementById('video-iframe').src = embedUrl;
+            document.getElementById('video-modal').style.display = 'flex';
+            document.getElementById('info-modal').style.display = 'none';
+        }
+
+        function closeVideoModal() {
+            document.getElementById('video-modal').style.display = 'none';
+            document.getElementById('video-iframe').src = '';
+        }
+
+        // GESTIÓN ADMIN DE PELÍCULAS
+        async function loadAdminMovies() {
+            try {
+                const snapshot = await database.ref('movies').once('value');
+                const adminGrid = document.getElementById('admin-movies-grid');
+                
+                if (!snapshot.exists()) {
+                    adminGrid.innerHTML = '<p style="color: #ccc;">No hay películas en el catálogo</p>';
+                    return;
+                }
+
+                const movies = snapshot.val();
+                adminGrid.innerHTML = '';
+
+                Object.entries(movies).forEach(([id, movie]) => {
+                    const movieItem = document.createElement('div');
+                    movieItem.style.cssText = `
+                        padding: 15px;
+                        border: 1px solid #333;
+                        border-radius: 8px;
+                        margin-bottom: 10px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        background: #2a2a2a;
+                    `;
+                    
+                    movieItem.innerHTML = `
+                        <div>
+                            <strong>${movie.title}</strong> (${movie.year})
+                            <br><small>${movie.category} • ${movie.duration} min</small>
+                        </div>
+                        <button class="btn" onclick="deleteMovie('${id}')" style="background: #e50914; color: white; padding: 8px 15px;">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    `;
+                    
+                    adminGrid.appendChild(movieItem);
+                });
+            } catch (error) {
+                console.error('Error loading admin movies:', error);
+            }
+        }
+
+        async function deleteMovie(movieId) {
+            if (confirm('¿Estás seguro de eliminar esta película?')) {
+                try {
+                    await database.ref('movies/' + movieId).remove();
+                    loadAdminMovies();
+                    loadMovies();
+                } catch (error) {
+                    alert('Error eliminando película: ' + error.message);
+                }
+            }
+        }
+
+        // BÚSQUEDA
+        function searchMovies() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const movieCards = document.querySelectorAll('.movie-card');
+            
+            movieCards.forEach(card => {
+                const title = card.querySelector('.movie-title').textContent.toLowerCase();
+                if (title.includes(searchTerm)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // INICIALIZACIÓN
+        window.addEventListener('load', checkAdminAccess);
+        window.addEventListener('hashchange', checkAdminAccess);
+
+        // Cerrar modales con ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeInfoModal();
+                closeVideoModal();
+            }
+        });
+
+        // Cerrar modales haciendo click fuera
+        document.getElementById('info-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('info-modal')) {
+                closeInfoModal();
+            }
+        });
+
+        document.getElementById('video-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('video-modal')) {
+                closeVideoModal();
+            }
+        });
+    </script>
+</body>
+</html>

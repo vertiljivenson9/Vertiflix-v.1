@@ -5,8 +5,7 @@
 
 ## ✨ Demo en Vivo
 **🌐 URL Demo:** (https://clever-elf-0b5153.netlify.app/) 
-**🔑 Acceso Admin:** https://clever-elf-0b5153.netlify.app/#admin-8X3k9mLp
-
+**🔑 Acceso Admin:** solo para comprador😁
 ## 🎥 Video Demo
 **Video demostrativo de la plataforma en funcionamiento:**
 
@@ -140,7 +139,8 @@ Hacer clic en cualquier película
 ¡Disfrutar! - Se reproduce automáticamente en modo cine
 
 Para Administradores
-https://clever-elf-0b5153.netlify.app/#admin-8X3k9mLp
+tendran un panel oculto para operar
+el systema!
 
 Registrarse como primer administrador
 

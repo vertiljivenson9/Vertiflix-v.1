@@ -18,6 +18,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'URL de canal requerida' }, { status: 400 })
     }
 
+    // Por ahora usamos el scraper demo
+    // El scraper real requiere autenticación interactiva
     const result = await scrapeTelegramChannel(channelUrl, limit)
 
     if (!result.success) {
@@ -34,7 +36,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const channelUrl = searchParams.get('channel')
-  const limit = parseInt(searchParams.get('limit') || '10')
+  const limit = parseInt(searchParams.get('limit') || '20')
   
   if (!channelUrl) {
     return NextResponse.json({ error: 'URL de canal requerida' }, { status: 400 })

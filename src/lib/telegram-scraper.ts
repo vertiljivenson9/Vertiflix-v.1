@@ -11,6 +11,10 @@ export interface TelegramMovie {
   messageId: string
   views: number
   date: Date
+  category?: string
+  year?: number
+  rating?: number
+  hasMedia?: boolean
 }
 
 export interface ScrapingResult {
@@ -21,19 +25,14 @@ export interface ScrapingResult {
   error?: string
 }
 
-// Configuración de Telegram API
-// Obtener en https://my.telegram.org/apps
-const TELEGRAM_API_ID = process.env.TELEGRAM_API_ID || ''
-const TELEGRAM_API_HASH = process.env.TELEGRAM_API_HASH || ''
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
-
 // Extraer username del canal desde URL
 export function extractChannelUsername(url: string): string | null {
-  // Formatos: https://t.me/canal, @canal, canal
+  // Formatos: https://t.me/canal, https://t.me/+private, @canal, canal
   const patterns = [
-    /t\.me\/([^\/\?]+)/,
-    /^@([a-zA-Z0-9_]+)/,
-    /^([a-zA-Z0-9_]{5,32})$/
+    /t\.me\/\+([a-zA-Z0-9_-]+)/,  // Canales privados
+    /t\.me\/([^\/\?]+)/,           // Canales públicos
+    /^@([a-zA-Z0-9_]+)/,           // Formato @canal
+    /^([a-zA-Z0-9_]{5,32})$/       // Solo nombre
   ]
   
   for (const pattern of patterns) {
@@ -43,8 +42,7 @@ export function extractChannelUsername(url: string): string | null {
   return null
 }
 
-// Simular scraping de canal (modo demo)
-// En producción, usar Telegram MTProto API
+// Scrapear canal de Telegram (modo demo con datos realistas)
 export async function scrapeTelegramChannel(
   channelUrl: string,
   limit: number = 20
@@ -57,107 +55,77 @@ export async function scrapeTelegramChannel(
       movies: [],
       total: 0,
       channelName: '',
-      error: 'URL de canal inválida'
+      error: 'URL de canal inválida. Ejemplo: https://t.me/nombre_canal'
     }
   }
 
-  // En producción, aquí usarías la API de Telegram
-  // Por ahora, simulamos datos realistas
-  
-  const mockMovies: TelegramMovie[] = generateMockMovies(channelUsername, limit)
+  // Generar películas de demostración
+  const movies = generateDemoMovies(channelUsername, limit)
   
   return {
     success: true,
-    movies: mockMovies,
-    total: mockMovies.length,
+    movies,
+    total: movies.length,
     channelName: `@${channelUsername}`
   }
 }
 
-// Generar películas de demostración basadas en el canal
-function generateMockMovies(channel: string, count: number): TelegramMovie[] {
-  const movieTitles = [
-    { title: 'Oppenheimer', year: 2023, genre: 'drama', rating: 8.9 },
+// Películas de demostración con datos realistas
+function generateDemoMovies(channel: string, count: number): TelegramMovie[] {
+  const sampleMovies = [
     { title: 'Dune: Parte Dos', year: 2024, genre: 'ciencia-ficcion', rating: 8.8 },
+    { title: 'Oppenheimer', year: 2023, genre: 'drama', rating: 8.9 },
     { title: 'Spider-Man: Cruzando el Multiverso', year: 2023, genre: 'animacion', rating: 8.7 },
     { title: 'John Wick 4', year: 2023, genre: 'accion', rating: 8.2 },
     { title: 'Barbie', year: 2023, genre: 'comedia', rating: 7.0 },
-    { title: 'Pobres Criaturas', year: 2023, genre: 'drama', rating: 8.0 },
-    { title: 'Misión Imposible 7', year: 2023, genre: 'accion', rating: 7.8 },
-    { title: 'Guardianes de la Galaxia Vol. 3', year: 2023, genre: 'ciencia-ficcion', rating: 8.0 },
-    { title: 'El Exorcista: Creyente', year: 2023, genre: 'terror', rating: 5.2 },
-    { title: 'Napoleón', year: 2023, genre: 'drama', rating: 6.5 },
-    { title: 'Wonka', year: 2023, genre: 'comedia', rating: 7.2 },
-    { title: 'Aquaman 2', year: 2023, genre: 'accion', rating: 6.0 },
     { title: 'Killers of the Flower Moon', year: 2023, genre: 'drama', rating: 8.5 },
+    { title: 'Guardianes de la Galaxia Vol. 3', year: 2023, genre: 'ciencia-ficcion', rating: 8.0 },
     { title: 'The Batman', year: 2022, genre: 'accion', rating: 8.1 },
     { title: 'Top Gun: Maverick', year: 2022, genre: 'accion', rating: 8.3 },
     { title: 'Avatar: El Camino del Agua', year: 2022, genre: 'ciencia-ficcion', rating: 7.9 },
-    { title: 'Black Panther 2', year: 2022, genre: 'accion', rating: 7.0 },
-    { title: 'Doctor Strange 2', year: 2022, genre: 'ciencia-ficcion', rating: 7.5 },
-    { title: 'Thor: Love and Thunder', year: 2022, genre: 'accion', rating: 6.8 },
-    { title: 'Jurassic World: Dominion', year: 2022, genre: 'ciencia-ficcion', rating: 6.5 },
+    { title: 'Interstellar', year: 2014, genre: 'ciencia-ficcion', rating: 8.7 },
+    { title: 'Inception', year: 2010, genre: 'ciencia-ficcion', rating: 8.8 },
+    { title: 'Parasite', year: 2019, genre: 'drama', rating: 8.6 },
+    { title: 'Joker', year: 2019, genre: 'drama', rating: 8.4 },
+    { title: 'Avengers: Endgame', year: 2019, genre: 'accion', rating: 8.4 },
+    { title: 'Spider-Man: No Way Home', year: 2021, genre: 'accion', rating: 8.4 },
+    { title: 'Demon Slayer: Tren Infinito', year: 2020, genre: 'anime', rating: 8.6 },
+    { title: 'Your Name', year: 2016, genre: 'anime', rating: 8.9 },
+    { title: 'Spirited Away', year: 2001, genre: 'anime', rating: 9.0 },
+    { title: 'The Last of Us', year: 2023, genre: 'serie', rating: 8.8 },
+    { title: 'House of the Dragon', year: 2022, genre: 'serie', rating: 8.5 },
+    { title: 'Wednesday', year: 2022, genre: 'serie', rating: 8.3 },
+    { title: 'Breaking Bad', year: 2008, genre: 'serie', rating: 9.5 },
+    { title: 'Game of Thrones', year: 2011, genre: 'serie', rating: 9.3 },
+    { title: 'Stranger Things T4', year: 2022, genre: 'serie', rating: 8.7 },
   ]
 
   const thumbnails = [
-    'https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
     'https://image.tmdb.org/t/p/w500/8b8R8l88Qje9dn9OE8PY05Nxl1X.jpg',
+    'https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
     'https://image.tmdb.org/t/p/w500/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg',
     'https://image.tmdb.org/t/p/w500/vZloFAK7NmvMGKE7VkF5UHaz0I.jpg',
     'https://image.tmdb.org/t/p/w500/iuFNMS8U5cb6xfzi51Dbkovj7vM.jpg',
+    'https://image.tmdb.org/t/p/w500/dB6Krk806zeqd0YNp2ngQ9zXteH.jpg',
+    'https://image.tmdb.org/t/p/w500/r2J02Z2OpNTctfOSN1Ydgii51I3.jpg',
+    'https://image.tmdb.org/t/p/w500/74xTEgt7R36Fber9Tav5PXS5qG4.jpg',
+    'https://image.tmdb.org/t/p/w500/62HCnUTziyWcpDaBO2i1DX17ljH.jpg',
+    'https://image.tmdb.org/t/p/w500/t6HIqrRAclMCA60NsSmeqe9RmNV.jpg',
   ]
 
-  return movieTitles.slice(0, count).map((movie, index) => ({
+  return sampleMovies.slice(0, count).map((movie, index) => ({
     id: `tg_${Date.now()}_${index}`,
     title: movie.title,
-    description: `Película importada desde ${channel}. ${movie.genre.charAt(0).toUpperCase() + movie.genre.slice(1)} - ${movie.year}`,
+    description: `Importado desde ${channel}. ${movie.genre} - ${movie.year}`,
     thumbnail: thumbnails[index % thumbnails.length],
     videoUrl: `https://t.me/${channel}/${1000 + index}`,
     sourceChannel: channel,
     messageId: `${1000 + index}`,
-    views: Math.floor(Math.random() * 50000) + 1000,
+    views: Math.floor(Math.random() * 100000) + 5000,
     date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
     category: movie.genre,
     year: movie.year,
     rating: movie.rating,
+    hasMedia: true
   }))
 }
-
-// API real de Telegram (requiere API_ID y API_HASH)
-// Usar GramJS o telegram-api-js para implementación completa
-/*
-import { TelegramClient } from 'telegram'
-import { StringSession } from 'telegram/sessions'
-
-export async function scrapeRealTelegramChannel(
-  channelUsername: string,
-  limit: number
-): Promise<ScrapingResult> {
-  const client = new TelegramClient(
-    new StringSession(''),
-    parseInt(TELEGRAM_API_ID),
-    TELEGRAM_API_HASH,
-    {}
-  )
-
-  await client.connect()
-
-  const messages = await client.getMessages(channelUsername, { limit })
-  
-  const movies: TelegramMovie[] = messages
-    .filter(m => m.media && 'document' in m.media)
-    .map(m => ({
-      id: `tg_${m.id}`,
-      title: m.message?.split('\n')[0] || 'Sin título',
-      description: m.message || '',
-      thumbnail: '', // Extraer thumbnail del documento
-      videoUrl: `https://t.me/${channelUsername}/${m.id}`,
-      sourceChannel: channelUsername,
-      messageId: String(m.id),
-      views: m.views || 0,
-      date: new Date(m.date * 1000),
-    }))
-
-  return { success: true, movies, total: movies.length, channelName: channelUsername }
-}
-*/

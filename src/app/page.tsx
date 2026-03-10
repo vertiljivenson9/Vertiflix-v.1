@@ -6,7 +6,7 @@ import Footer from '@/components/layout/Footer'
 import MovieHero from '@/components/movies/MovieHero'
 import CategoryRow from '@/components/movies/CategoryRow'
 import MovieModal from '@/components/movies/MovieModal'
-import VideoPlayer from '@/components/player/VideoPlayer'
+import CoverPlayer from '@/components/player/CoverPlayer'
 import AdminPanel from '@/components/admin/AdminPanel'
 import { DEMO_MOVIES } from '@/lib/data'
 import type { Movie } from '@/types'
@@ -162,7 +162,7 @@ export default function Home() {
 
       <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} onPlay={handlePlay} />
 
-      {playingMovie && <VideoPlayer movie={playingMovie} onClose={() => setPlayingMovie(null)} />}
+      {playingMovie && <CoverPlayer movie={playingMovie} onClose={() => setPlayingMovie(null)} />}
 
       <AdminPanel
         isOpen={showAdmin}

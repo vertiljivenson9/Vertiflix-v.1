@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { X, Play, Pause, Volume2, VolumeX, Subtitles, Languages, ChevronDown, Maximize, Minimize } from 'lucide-react'
+import { X, Play, Pause, Volume2, VolumeX, Subtitles, Languages, ChevronDown, Maximize, Minimize, Zap, Star, Film, Ghost, Heart, Rocket, Laugh, Globe } from 'lucide-react'
 import type { Movie } from '@/types'
 
 interface CoverPlayerProps {
@@ -13,94 +13,72 @@ type SubtitleLang = 'es' | 'en' | 'fr'
 
 const LANG_NAMES: Record<SubtitleLang, string> = { es: 'Español', en: 'English', fr: 'Français' }
 
-// Subtítulos sincronizados con retraso (simulando tiempo de habla del actor)
-const SCENE_SUBTITLES: Record<SubtitleLang, Record<number, { text: string; delay: number }>> = {
+const SCENE_SUBTITLES: Record<SubtitleLang, Record<number, string>> = {
   es: {
-    0: { text: 'La historia comienza en una noche oscura...', delay: 500 },
-    5: { text: '¿Quién está ahí?', delay: 800 },
-    7: { text: '—preguntó con voz temblorosa.', delay: 300 },
-    10: { text: 'No tengas miedo.', delay: 600 },
-    12: { text: 'Estoy aquí para ayudarte.', delay: 400 },
-    15: { text: 'Debemos irnos ahora...', delay: 700 },
-    18: { text: '...antes de que sea demasiado tarde.', delay: 500 },
-    20: { text: 'El camino será peligroso.', delay: 600 },
-    23: { text: 'Pero juntos podemos hacerlo.', delay: 400 },
-    25: { text: '¡Mira! Allí está la salida.', delay: 500 },
-    30: { text: 'No puedo creer lo que estamos viendo.', delay: 600 },
-    35: { text: 'Esto cambiará todo para siempre.', delay: 500 },
-    40: { text: 'Tenemos que ser fuertes.', delay: 400 },
-    43: { text: 'En este momento.', delay: 300 },
-    45: { text: 'El destino nos ha unido por una razón.', delay: 600 },
-    50: { text: '¿Recuerdas cuando todo esto comenzó?', delay: 500 },
-    55: { text: 'Parece que fue ayer...', delay: 600 },
-    58: { text: '...pero ha pasado tanto tiempo.', delay: 400 },
-    60: { text: 'No me arrepiento de nada.', delay: 500 },
-    65: { text: 'Cada momento valió la pena.', delay: 400 },
-    70: { text: 'Lo logramos.', delay: 300 },
-    73: { text: 'Finalmente lo logramos.', delay: 500 },
-    75: { text: 'Pero esto solo es el comienzo.', delay: 500 },
-    80: { text: 'Hay mucho más por descubrir.', delay: 500 },
-    85: { text: 'El futuro nos depara grandes sorpresas.', delay: 600 },
-    90: { text: 'Estoy listo para lo que venga.', delay: 500 },
-    95: { text: 'Y así, nuestra historia continúa...', delay: 700 }
+    0: 'La historia comienza...',
+    3: '¿Quién está ahí?',
+    6: 'No tengas miedo.',
+    9: 'Estoy aquí para ayudarte.',
+    12: 'Debemos irnos ahora.',
+    15: 'El camino será peligroso.',
+    18: '¡Mira! Allí está la salida.',
+    21: 'No puedo creerlo.',
+    24: 'Esto cambiará todo.',
+    27: 'Tenemos que ser fuertes.',
+    30: 'El destino nos ha unido.',
+    33: '¿Recuerdas cuando comenzó?',
+    36: 'Parece que fue ayer.',
+    39: 'No me arrepiento de nada.',
+    42: 'Cada momento valió la pena.',
+    45: 'Lo logramos.',
+    48: 'Esto es solo el comienzo.',
+    51: 'El futuro nos espera.',
+    54: 'Estoy listo.',
+    57: 'Nuestra historia continúa...'
   },
   en: {
-    0: { text: 'The story begins on a dark night...', delay: 500 },
-    5: { text: 'Who is there?', delay: 800 },
-    7: { text: '—he asked with a trembling voice.', delay: 300 },
-    10: { text: "Don't be afraid.", delay: 600 },
-    12: { text: "I'm here to help you.", delay: 400 },
-    15: { text: 'We must leave now...', delay: 700 },
-    18: { text: "...before it's too late.", delay: 500 },
-    20: { text: 'The path will be dangerous.', delay: 600 },
-    23: { text: 'But together we can do it.', delay: 400 },
-    25: { text: 'Look! There is the exit.', delay: 500 },
-    30: { text: "I can't believe what we're seeing.", delay: 600 },
-    35: { text: 'This will change everything forever.', delay: 500 },
-    40: { text: 'We must be strong.', delay: 400 },
-    43: { text: 'At this moment.', delay: 300 },
-    45: { text: 'Destiny has united us for a reason.', delay: 600 },
-    50: { text: 'Do you remember when all this started?', delay: 500 },
-    55: { text: 'It seems like yesterday...', delay: 600 },
-    58: { text: '...but so much time has passed.', delay: 400 },
-    60: { text: "I don't regret anything.", delay: 500 },
-    65: { text: 'Every moment was worth it.', delay: 400 },
-    70: { text: 'We made it.', delay: 300 },
-    73: { text: 'We finally made it.', delay: 500 },
-    75: { text: 'But this is only the beginning.', delay: 500 },
-    80: { text: 'There is much more to discover.', delay: 500 },
-    85: { text: 'The future holds great surprises for us.', delay: 600 },
-    90: { text: "I'm ready for what comes.", delay: 500 },
-    95: { text: 'And so, our story continues...', delay: 700 }
+    0: 'The story begins...',
+    3: 'Who is there?',
+    6: "Don't be afraid.",
+    9: "I'm here to help you.",
+    12: 'We must leave now.',
+    15: 'The path will be dangerous.',
+    18: 'Look! There is the exit.',
+    21: "I can't believe it.",
+    24: 'This will change everything.',
+    27: 'We must be strong.',
+    30: 'Destiny has united us.',
+    33: 'Do you remember when it started?',
+    36: 'It seems like yesterday.',
+    39: "I don't regret anything.",
+    42: 'Every moment was worth it.',
+    45: 'We made it.',
+    48: 'This is just the beginning.',
+    51: 'The future awaits us.',
+    54: "I'm ready.",
+    57: 'Our story continues...'
   },
   fr: {
-    0: { text: "L'histoire commence par une nuit sombre...", delay: 500 },
-    5: { text: 'Qui est là?', delay: 800 },
-    7: { text: "—a-t-il demandé d'une voix tremblante.", delay: 300 },
-    10: { text: "N'aie pas peur.", delay: 600 },
-    12: { text: 'Je suis là pour taider.', delay: 400 },
-    15: { text: 'Nous devons partir maintenant...', delay: 700 },
-    18: { text: '...avant quil soit trop tard.', delay: 500 },
-    20: { text: 'Le chemin sera dangereux.', delay: 600 },
-    23: { text: 'Mais ensemble nous pouvons le faire.', delay: 400 },
-    25: { text: 'Regarde! La sortie est là.', delay: 500 },
-    30: { text: "Je n'arrive pas à croire ce que nous voyons.", delay: 600 },
-    35: { text: 'Cela va tout changer pour toujours.', delay: 500 },
-    40: { text: 'Nous devons être forts.', delay: 400 },
-    43: { text: 'En ce moment.', delay: 300 },
-    45: { text: 'Le destin nous a unis pour une raison.', delay: 600 },
-    50: { text: 'Te souviens-tu quand tout cela a commencé?', delay: 500 },
-    55: { text: 'On dirait que cétait hier...', delay: 600 },
-    58: { text: '...mais tant de temps a passé.', delay: 400 },
-    60: { text: 'Je ne regrette rien.', delay: 500 },
-    65: { text: 'Chaque instant en valait la peine.', delay: 400 },
-    70: { text: 'Nous y sommes arrivés.', delay: 300 },
-    73: { text: 'Nous y sommes enfin arrivés.', delay: 500 },
-    75: { text: "Mais ce n'est que le début.", delay: 500 },
-    80: { text: 'Il y a tellement plus à découvrir.', delay: 500 },
-    85: { text: "L'avenir nous réserve de grandes surprises.", delay: 600 },
-    90: { text: 'Je suis prêt pour ce qui vient.', delay: 500 },
-    95: { text: 'Et ainsi, notre histoire continue...', delay: 700 }
+    0: "L'histoire commence...",
+    3: 'Qui est là?',
+    6: "N'aie pas peur.",
+    9: 'Je suis là pour taider.',
+    12: 'Nous devons partir.',
+    15: 'Le chemin sera dangereux.',
+    18: 'Regarde! La sortie est là.',
+    21: "Je n'y crois pas.",
+    24: 'Cela va tout changer.',
+    27: 'Nous devons être forts.',
+    30: 'Le destin nous a unis.',
+    33: 'Te souviens-tu quand ça a commencé?',
+    36: 'On dirait hier.',
+    39: 'Je ne regrette rien.',
+    42: 'Chaque instant en valait la peine.',
+    45: 'Nous y sommes arrivés.',
+    48: "Ce n'est que le début.",
+    51: "L'avenir nous attend.",
+    54: 'Je suis prêt.',
+    57: 'Notre histoire continue...'
   }
 }
 
@@ -114,8 +92,10 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
   const [showSubtitles, setShowSubtitles] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait')
+  const [videoStarted, setVideoStarted] = useState(false)
   
   const containerRef = useRef<HTMLDivElement>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const hideTimer = useRef<NodeJS.Timeout>()
   const progressInterval = useRef<NodeJS.Timeout>()
 
@@ -145,12 +125,10 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
     }
   }, [isPlaying, progress])
 
-  // Subtitle sync - calculated with memo
   const displayedSubtitle = useMemo(() => {
     if (!showSubtitles || !isPlaying) return ''
     const sceneIndex = Math.floor(progress / 3) * 3
-    const sceneData = SCENE_SUBTITLES[subtitleLang][sceneIndex]
-    return sceneData?.text || ''
+    return SCENE_SUBTITLES[subtitleLang][sceneIndex] || ''
   }, [progress, subtitleLang, showSubtitles, isPlaying])
 
   const formatTime = useCallback((p: number) => {
@@ -161,7 +139,28 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
     return `${m}:${s.toString().padStart(2, '0')}`
   }, [movie.duration])
 
-  const handlePlay = () => setIsPlaying(!isPlaying)
+  // Force play video via postMessage to YouTube iframe
+  const forcePlay = useCallback(() => {
+    if (iframeRef.current) {
+      // YouTube iframe API postMessage
+      iframeRef.current.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', '*')
+    }
+    setIsPlaying(true)
+    setVideoStarted(true)
+  }, [])
+
+  const handlePlay = () => {
+    if (!videoStarted) {
+      forcePlay()
+    } else {
+      setIsPlaying(!isPlaying)
+      if (!isPlaying && iframeRef.current) {
+        iframeRef.current.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', '*')
+      } else if (iframeRef.current) {
+        iframeRef.current.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*')
+      }
+    }
+  }
   
   const toggleFullscreen = async () => {
     if (!containerRef.current) return
@@ -176,14 +175,15 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
 
   const getEmbedUrl = () => {
     const url = movie.videoUrl || ''
+    const autoplay = videoStarted ? 1 : 0
     if (url.includes('youtube.com/watch')) {
-      return `https://www.youtube.com/embed/${url.split('v=')[1]?.split('&')[0]}?autoplay=1&controls=0&modestbranding=1&rel=0`
+      return `https://www.youtube.com/embed/${url.split('v=')[1]?.split('&')[0]}?autoplay=${autoplay}&controls=1&modestbranding=1&rel=0&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`
     }
     if (url.includes('youtu.be')) {
-      return `https://www.youtube.com/embed/${url.split('youtu.be/')[1]}?autoplay=1&controls=0&modestbranding=1&rel=0`
+      return `https://www.youtube.com/embed/${url.split('youtu.be/')[1]}?autoplay=${autoplay}&controls=1&modestbranding=1&rel=0&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`
     }
     if (url.includes('youtube.com/embed')) {
-      return `${url}?autoplay=1&controls=0&modestbranding=1&rel=0`
+      return `${url}?autoplay=${autoplay}&controls=1&modestbranding=1&rel=0&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`
     }
     return url
   }
@@ -195,29 +195,32 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
   return (
     <div ref={containerRef} className="fixed inset-0 z-50 bg-black" onMouseMove={() => setShowControls(true)}>
       
-      {/* LANDSCAPE MODE - Video redimensionado con fondo negro */}
+      {/* LANDSCAPE MODE */}
       {orientation === 'landscape' && (
         <div className="absolute inset-0 bg-black flex items-center justify-center">
-          {/* Video container - más pequeño, centrado */}
+          {/* Video container - tamaño ajustado */}
           <div 
-            className="relative bg-black rounded-lg overflow-hidden shadow-2xl"
+            className="relative bg-black overflow-hidden rounded-lg"
             style={{ 
-              width: '85vw',
-              height: 'calc(85vw * 9 / 16)',
+              width: '90vw',
+              height: 'calc(90vw * 9 / 16)',
               maxHeight: '85vh',
               maxWidth: 'calc(85vh * 16 / 9)'
             }}
           >
-            {/* Video Embed */}
-            {isYouTube && isPlaying && (
+            {/* YouTube Embed */}
+            {isYouTube && (
               <iframe 
+                ref={iframeRef}
                 src={getEmbedUrl()} 
                 className="w-full h-full" 
                 allow="autoplay; fullscreen"
                 allowFullScreen
               />
             )}
-            {isGoogleDrive && isPlaying && (
+            
+            {/* Google Drive */}
+            {isGoogleDrive && (
               <iframe 
                 src={movie.videoUrl?.replace('/view', '/preview')} 
                 className="w-full h-full" 
@@ -225,32 +228,24 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
                 allowFullScreen
               />
             )}
-            {isTelegram && isPlaying && (
+            
+            {/* Telegram */}
+            {isTelegram && (
               <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#0088cc] to-[#0055aa]">
                 <Play className="w-16 h-16 text-white mb-4" fill="white" />
                 <p className="text-white text-lg mb-4">Contenido de Telegram</p>
                 <a href={movie.videoUrl} target="_blank" rel="noopener" className="bg-white text-[#0088cc] px-6 py-2 rounded-full font-medium">Ver en Telegram</a>
               </div>
             )}
-            {(!isYouTube && !isGoogleDrive && !isTelegram) && (
-              <img src={movie.thumbnail} alt={movie.title} className="w-full h-full object-cover" />
-            )}
             
-            {/* Placeholder cuando no está reproduciendo */}
-            {!isPlaying && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                <img src={movie.thumbnail} alt={movie.title} className="w-full h-full object-cover opacity-50" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <button onClick={handlePlay} className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center shadow-lg hover:bg-red-700 transition">
-                    <Play className="w-10 h-10 text-white ml-1" fill="white" />
-                  </button>
-                </div>
-              </div>
+            {/* Otros */}
+            {!isYouTube && !isGoogleDrive && !isTelegram && (
+              <img src={movie.thumbnail} alt={movie.title} className="w-full h-full object-cover" />
             )}
             
             {/* Subtítulos */}
             {showSubtitles && isPlaying && displayedSubtitle && (
-              <div className="absolute bottom-4 left-0 right-0 flex justify-center px-4">
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center px-4 pointer-events-none">
                 <span className="bg-black/90 text-white px-4 py-2 rounded text-base font-medium max-w-[90%] text-center">
                   {displayedSubtitle}
                 </span>
@@ -259,14 +254,14 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
           </div>
           
           {/* Controles */}
-          <div className={`absolute inset-0 transition-opacity ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/50" />
+          <div className={`absolute inset-0 transition-opacity ${showControls || !videoStarted ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/40" />
             
             {/* Top */}
-            <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start">
+            <div className="absolute top-0 left-0 right-0 p-3 flex justify-between items-start">
               <div>
-                <h3 className="text-white text-xl font-bold">{movie.title}</h3>
-                <p className="text-gray-300 text-sm">{movie.year} • {movie.category}</p>
+                <h3 className="text-white text-lg font-bold">{movie.title}</h3>
+                <p className="text-gray-300 text-xs">{movie.year} • {movie.category}</p>
               </div>
               <div className="flex gap-2">
                 <div className="relative">
@@ -290,9 +285,18 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
               </div>
             </div>
             
+            {/* Center Play Button */}
+            {isYouTube && !videoStarted && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <button onClick={forcePlay} className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg hover:bg-red-700 transition">
+                  <Play className="w-8 h-8 text-white ml-1" fill="white" />
+                </button>
+              </div>
+            )}
+            
             {/* Bottom */}
-            <div className="absolute bottom-0 left-0 right-0 p-4">
-              <div className="flex items-center gap-3 mb-3">
+            <div className="absolute bottom-0 left-0 right-0 p-3">
+              <div className="flex items-center gap-3 mb-2">
                 <span className="text-white text-xs">{formatTime(progress)}</span>
                 <div className="flex-1 h-1 bg-white/30 rounded-full cursor-pointer" onClick={e => {
                   const rect = e.currentTarget.getBoundingClientRect()
@@ -304,8 +308,8 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
               </div>
               <div className="flex justify-between">
                 <div className="flex gap-3">
-                  <button onClick={handlePlay} className="text-white">{isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}</button>
-                  <button onClick={() => setIsMuted(!isMuted)} className="text-white">{isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}</button>
+                  <button onClick={handlePlay} className="text-white">{isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}</button>
+                  <button onClick={() => setIsMuted(!isMuted)} className="text-white">{isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}</button>
                 </div>
                 <button onClick={toggleFullscreen} className="text-white">{isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}</button>
               </div>
@@ -314,29 +318,29 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
         </div>
       )}
       
-      {/* PORTRAIT MODE - Tapa fake Netflix */}
+      {/* PORTRAIT MODE */}
       {orientation === 'portrait' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black">
           <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: `url(${movie.thumbnail})` }} />
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/80" />
           
           <div className="relative z-10 text-center px-6">
-            <div className="w-24 h-24 mx-auto mb-4 bg-red-600 rounded-full flex items-center justify-center shadow-lg shadow-red-600/50 animate-pulse">
-              <Play className="w-12 h-12 text-white ml-1" fill="white" />
+            <div className="w-20 h-20 mx-auto mb-4 bg-red-600 rounded-full flex items-center justify-center shadow-lg shadow-red-600/50 animate-pulse">
+              <Play className="w-10 h-10 text-white ml-1" fill="white" />
             </div>
-            <h2 className="text-white text-2xl font-bold mb-2">{movie.title}</h2>
+            <h2 className="text-white text-xl font-bold mb-2">{movie.title}</h2>
             <p className="text-gray-300 text-sm mb-1">{movie.year} • {movie.duration} min • ⭐ {movie.rating}</p>
-            <p className="text-gray-400 text-xs mb-6 line-clamp-2">{movie.description}</p>
+            <p className="text-gray-400 text-xs mb-5 line-clamp-2">{movie.description}</p>
             
             <div className="flex items-center justify-center gap-2 text-gray-400 text-sm">
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="5" y="2" width="14" height="20" rx="2" />
                 <path d="M12 18h.01" />
               </svg>
-              <span>Rota tu dispositivo para ver</span>
+              <span>Rota para ver</span>
             </div>
             
-            <button onClick={onClose} className="mt-6 px-5 py-2 bg-white/10 rounded-full text-white text-sm hover:bg-white/20 transition">Cerrar</button>
+            <button onClick={onClose} className="mt-5 px-4 py-2 bg-white/10 rounded-full text-white text-sm hover:bg-white/20">Cerrar</button>
           </div>
         </div>
       )}

@@ -13,73 +13,94 @@ type SubtitleLang = 'es' | 'en' | 'fr'
 
 const LANG_NAMES: Record<SubtitleLang, string> = { es: 'Español', en: 'English', fr: 'Français' }
 
-// Subtítulos por escena según progreso
-const SCENE_SUBTITLES: Record<SubtitleLang, Record<number, string>> = {
+// Subtítulos sincronizados con retraso (simulando tiempo de habla del actor)
+const SCENE_SUBTITLES: Record<SubtitleLang, Record<number, { text: string; delay: number }>> = {
   es: {
-    0: 'La historia comienza en una noche oscura...',
-    5: '¿Quién está ahí? - preguntó con voz temblorosa.',
-    10: 'No tengas miedo. Estoy aquí para ayudarte.',
-    15: 'Debemos irnos ahora, antes de que sea demasiado tarde.',
-    20: 'El camino será peligroso, pero juntos podemos hacerlo.',
-    25: '¡Mira! Allí está la salida.',
-    30: 'No puedo creer lo que estamos viendo.',
-    35: 'Esto cambiará todo para siempre.',
-    40: 'Tenemos que ser fuertes en este momento.',
-    45: 'El destino nos ha unido por una razón.',
-    50: '¿Recuerdas cuando todo esto comenzó?',
-    55: 'Parece que fue ayer, pero ha pasado tanto tiempo.',
-    60: 'No me arrepiento de nada.',
-    65: 'Cada momento valió la pena.',
-    70: 'Lo logramos. Finalmente lo logramos.',
-    75: 'Pero esto solo es el comienzo.',
-    80: 'Hay mucho más por descubrir.',
-    85: 'El futuro nos depara grandes sorpresas.',
-    90: 'Estoy listo para lo que venga.',
-    95: 'Y así, nuestra historia continúa...'
+    0: { text: 'La historia comienza en una noche oscura...', delay: 500 },
+    5: { text: '¿Quién está ahí?', delay: 800 },
+    7: { text: '—preguntó con voz temblorosa.', delay: 300 },
+    10: { text: 'No tengas miedo.', delay: 600 },
+    12: { text: 'Estoy aquí para ayudarte.', delay: 400 },
+    15: { text: 'Debemos irnos ahora...', delay: 700 },
+    18: { text: '...antes de que sea demasiado tarde.', delay: 500 },
+    20: { text: 'El camino será peligroso.', delay: 600 },
+    23: { text: 'Pero juntos podemos hacerlo.', delay: 400 },
+    25: { text: '¡Mira! Allí está la salida.', delay: 500 },
+    30: { text: 'No puedo creer lo que estamos viendo.', delay: 600 },
+    35: { text: 'Esto cambiará todo para siempre.', delay: 500 },
+    40: { text: 'Tenemos que ser fuertes.', delay: 400 },
+    43: { text: 'En este momento.', delay: 300 },
+    45: { text: 'El destino nos ha unido por una razón.', delay: 600 },
+    50: { text: '¿Recuerdas cuando todo esto comenzó?', delay: 500 },
+    55: { text: 'Parece que fue ayer...', delay: 600 },
+    58: { text: '...pero ha pasado tanto tiempo.', delay: 400 },
+    60: { text: 'No me arrepiento de nada.', delay: 500 },
+    65: { text: 'Cada momento valió la pena.', delay: 400 },
+    70: { text: 'Lo logramos.', delay: 300 },
+    73: { text: 'Finalmente lo logramos.', delay: 500 },
+    75: { text: 'Pero esto solo es el comienzo.', delay: 500 },
+    80: { text: 'Hay mucho más por descubrir.', delay: 500 },
+    85: { text: 'El futuro nos depara grandes sorpresas.', delay: 600 },
+    90: { text: 'Estoy listo para lo que venga.', delay: 500 },
+    95: { text: 'Y así, nuestra historia continúa...', delay: 700 }
   },
   en: {
-    0: 'The story begins on a dark night...',
-    5: 'Who is there? - he asked with a trembling voice.',
-    10: "Don't be afraid. I'm here to help you.",
-    15: "We must leave now, before it's too late.",
-    20: 'The path will be dangerous, but together we can do it.',
-    25: 'Look! There is the exit.',
-    30: "I can't believe what we're seeing.",
-    35: 'This will change everything forever.',
-    40: 'We must be strong at this moment.',
-    45: 'Destiny has united us for a reason.',
-    50: 'Do you remember when all this started?',
-    55: 'It seems like yesterday, but so much time has passed.',
-    60: "I don't regret anything.",
-    65: 'Every moment was worth it.',
-    70: 'We made it. We finally made it.',
-    75: 'But this is only the beginning.',
-    80: 'There is much more to discover.',
-    85: 'The future holds great surprises for us.',
-    90: "I'm ready for what comes.",
-    95: 'And so, our story continues...'
+    0: { text: 'The story begins on a dark night...', delay: 500 },
+    5: { text: 'Who is there?', delay: 800 },
+    7: { text: '—he asked with a trembling voice.', delay: 300 },
+    10: { text: "Don't be afraid.", delay: 600 },
+    12: { text: "I'm here to help you.", delay: 400 },
+    15: { text: 'We must leave now...', delay: 700 },
+    18: { text: "...before it's too late.", delay: 500 },
+    20: { text: 'The path will be dangerous.', delay: 600 },
+    23: { text: 'But together we can do it.', delay: 400 },
+    25: { text: 'Look! There is the exit.', delay: 500 },
+    30: { text: "I can't believe what we're seeing.", delay: 600 },
+    35: { text: 'This will change everything forever.', delay: 500 },
+    40: { text: 'We must be strong.', delay: 400 },
+    43: { text: 'At this moment.', delay: 300 },
+    45: { text: 'Destiny has united us for a reason.', delay: 600 },
+    50: { text: 'Do you remember when all this started?', delay: 500 },
+    55: { text: 'It seems like yesterday...', delay: 600 },
+    58: { text: '...but so much time has passed.', delay: 400 },
+    60: { text: "I don't regret anything.", delay: 500 },
+    65: { text: 'Every moment was worth it.', delay: 400 },
+    70: { text: 'We made it.', delay: 300 },
+    73: { text: 'We finally made it.', delay: 500 },
+    75: { text: 'But this is only the beginning.', delay: 500 },
+    80: { text: 'There is much more to discover.', delay: 500 },
+    85: { text: 'The future holds great surprises for us.', delay: 600 },
+    90: { text: "I'm ready for what comes.", delay: 500 },
+    95: { text: 'And so, our story continues...', delay: 700 }
   },
   fr: {
-    0: "L'histoire commence par une nuit sombre...",
-    5: "Qui est là? - a-t-il demandé d'une voix tremblante.",
-    10: "N'aie pas peur. Je suis là pour t'aider.",
-    15: "Nous devons partir maintenant, avant qu'il ne soit trop tard.",
-    20: 'Le chemin sera dangereux, mais ensemble nous pouvons le faire.',
-    25: 'Regarde! La sortie est là.',
-    30: "Je n'arrive pas à croire ce que nous voyons.",
-    35: 'Cela va tout changer pour toujours.',
-    40: 'Nous devons être forts en ce moment.',
-    45: 'Le destin nous a unis pour une raison.',
-    50: 'Te souviens-tu quand tout cela a commencé?',
-    55: "On dirait que c'était hier, mais tant de temps a passé.",
-    60: 'Je ne regrette rien.',
-    65: 'Chaque instant en valait la peine.',
-    70: "Nous y sommes arrivés. Nous y sommes enfin arrivés.",
-    75: "Mais ce n'est que le début.",
-    80: 'Il y a tellement plus à découvrir.',
-    85: "L'avenir nous réserve de grandes surprises.",
-    90: 'Je suis prêt pour ce qui vient.',
-    95: 'Et ainsi, notre histoire continue...'
+    0: { text: "L'histoire commence par une nuit sombre...", delay: 500 },
+    5: { text: 'Qui est là?', delay: 800 },
+    7: { text: "—a-t-il demandé d'une voix tremblante.", delay: 300 },
+    10: { text: "N'aie pas peur.", delay: 600 },
+    12: { text: 'Je suis là pour taider.', delay: 400 },
+    15: { text: 'Nous devons partir maintenant...', delay: 700 },
+    18: { text: '...avant quil soit trop tard.', delay: 500 },
+    20: { text: 'Le chemin sera dangereux.', delay: 600 },
+    23: { text: 'Mais ensemble nous pouvons le faire.', delay: 400 },
+    25: { text: 'Regarde! La sortie est là.', delay: 500 },
+    30: { text: "Je n'arrive pas à croire ce que nous voyons.", delay: 600 },
+    35: { text: 'Cela va tout changer pour toujours.', delay: 500 },
+    40: { text: 'Nous devons être forts.', delay: 400 },
+    43: { text: 'En ce moment.', delay: 300 },
+    45: { text: 'Le destin nous a unis pour une raison.', delay: 600 },
+    50: { text: 'Te souviens-tu quand tout cela a commencé?', delay: 500 },
+    55: { text: 'On dirait que cétait hier...', delay: 600 },
+    58: { text: '...mais tant de temps a passé.', delay: 400 },
+    60: { text: 'Je ne regrette rien.', delay: 500 },
+    65: { text: 'Chaque instant en valait la peine.', delay: 400 },
+    70: { text: 'Nous y sommes arrivés.', delay: 300 },
+    73: { text: 'Nous y sommes enfin arrivés.', delay: 500 },
+    75: { text: "Mais ce n'est que le début.", delay: 500 },
+    80: { text: 'Il y a tellement plus à découvrir.', delay: 500 },
+    85: { text: "L'avenir nous réserve de grandes surprises.", delay: 600 },
+    90: { text: 'Je suis prêt pour ce qui vient.', delay: 500 },
+    95: { text: 'Et ainsi, notre histoire continue...', delay: 700 }
   }
 }
 
@@ -124,10 +145,12 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
     }
   }, [isPlaying, progress])
 
-  const currentSubtitle = useMemo(() => {
+  // Subtitle sync - calculated with memo
+  const displayedSubtitle = useMemo(() => {
     if (!showSubtitles || !isPlaying) return ''
-    const sceneIndex = Math.floor(progress / 5) * 5
-    return SCENE_SUBTITLES[subtitleLang][sceneIndex] || SCENE_SUBTITLES[subtitleLang][0]
+    const sceneIndex = Math.floor(progress / 3) * 3
+    const sceneData = SCENE_SUBTITLES[subtitleLang][sceneIndex]
+    return sceneData?.text || ''
   }, [progress, subtitleLang, showSubtitles, isPlaying])
 
   const formatTime = useCallback((p: number) => {
@@ -154,13 +177,13 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
   const getEmbedUrl = () => {
     const url = movie.videoUrl || ''
     if (url.includes('youtube.com/watch')) {
-      return `https://www.youtube.com/embed/${url.split('v=')[1]?.split('&')[0]}?autoplay=1&controls=0`
+      return `https://www.youtube.com/embed/${url.split('v=')[1]?.split('&')[0]}?autoplay=1&controls=0&modestbranding=1&rel=0`
     }
     if (url.includes('youtu.be')) {
-      return `https://www.youtube.com/embed/${url.split('youtu.be/')[1]}?autoplay=1&controls=0`
+      return `https://www.youtube.com/embed/${url.split('youtu.be/')[1]}?autoplay=1&controls=0&modestbranding=1&rel=0`
     }
     if (url.includes('youtube.com/embed')) {
-      return `${url}?autoplay=1&controls=0`
+      return `${url}?autoplay=1&controls=0&modestbranding=1&rel=0`
     }
     return url
   }
@@ -172,94 +195,119 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
   return (
     <div ref={containerRef} className="fixed inset-0 z-50 bg-black" onMouseMove={() => setShowControls(true)}>
       
-      {/* LANDSCAPE MODE - Video centrado con fondo negro */}
+      {/* LANDSCAPE MODE - Video redimensionado con fondo negro */}
       {orientation === 'landscape' && (
         <div className="absolute inset-0 bg-black flex items-center justify-center">
-          <div className="w-full h-full flex items-center justify-center">
-            
+          {/* Video container - más pequeño, centrado */}
+          <div 
+            className="relative bg-black rounded-lg overflow-hidden shadow-2xl"
+            style={{ 
+              width: '85vw',
+              height: 'calc(85vw * 9 / 16)',
+              maxHeight: '85vh',
+              maxWidth: 'calc(85vh * 16 / 9)'
+            }}
+          >
             {/* Video Embed */}
-            {isYouTube && (
-              <iframe src={getEmbedUrl()} className="w-full h-full max-w-[177vh] max-h-[56vw]" allow="autoplay; fullscreen" />
+            {isYouTube && isPlaying && (
+              <iframe 
+                src={getEmbedUrl()} 
+                className="w-full h-full" 
+                allow="autoplay; fullscreen"
+                allowFullScreen
+              />
             )}
-            {isGoogleDrive && (
-              <iframe src={movie.videoUrl?.replace('/view', '/preview')} className="w-full h-full" allow="autoplay" />
+            {isGoogleDrive && isPlaying && (
+              <iframe 
+                src={movie.videoUrl?.replace('/view', '/preview')} 
+                className="w-full h-full" 
+                allow="autoplay"
+                allowFullScreen
+              />
             )}
-            {isTelegram && (
-              <div className="flex flex-col items-center justify-center text-center">
-                <Play className="w-20 h-20 text-white mb-4" fill="white" />
-                <p className="text-white text-xl mb-4">Contenido de Telegram</p>
-                <a href={movie.videoUrl} target="_blank" rel="noopener" className="bg-white text-[#0088cc] px-6 py-2 rounded-full">Ver en Telegram</a>
+            {isTelegram && isPlaying && (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#0088cc] to-[#0055aa]">
+                <Play className="w-16 h-16 text-white mb-4" fill="white" />
+                <p className="text-white text-lg mb-4">Contenido de Telegram</p>
+                <a href={movie.videoUrl} target="_blank" rel="noopener" className="bg-white text-[#0088cc] px-6 py-2 rounded-full font-medium">Ver en Telegram</a>
               </div>
             )}
-            {!isYouTube && !isGoogleDrive && !isTelegram && (
-              <img src={movie.thumbnail} alt={movie.title} className="max-w-full max-h-full object-contain" />
+            {(!isYouTube && !isGoogleDrive && !isTelegram) && (
+              <img src={movie.thumbnail} alt={movie.title} className="w-full h-full object-cover" />
+            )}
+            
+            {/* Placeholder cuando no está reproduciendo */}
+            {!isPlaying && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                <img src={movie.thumbnail} alt={movie.title} className="w-full h-full object-cover opacity-50" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <button onClick={handlePlay} className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center shadow-lg hover:bg-red-700 transition">
+                    <Play className="w-10 h-10 text-white ml-1" fill="white" />
+                  </button>
+                </div>
+              </div>
             )}
             
             {/* Subtítulos */}
-            {showSubtitles && isPlaying && currentSubtitle && (
-              <div className="absolute bottom-20 left-0 right-0 text-center">
-                <span className="bg-black/90 text-white px-6 py-3 rounded-lg text-xl">{currentSubtitle}</span>
+            {showSubtitles && isPlaying && displayedSubtitle && (
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center px-4">
+                <span className="bg-black/90 text-white px-4 py-2 rounded text-base font-medium max-w-[90%] text-center">
+                  {displayedSubtitle}
+                </span>
               </div>
             )}
           </div>
           
           {/* Controles */}
           <div className={`absolute inset-0 transition-opacity ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/50" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/50" />
             
             {/* Top */}
-            <div className="absolute top-0 left-0 right-0 p-6 flex justify-between">
+            <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start">
               <div>
-                <h3 className="text-white text-2xl font-bold">{movie.title}</h3>
+                <h3 className="text-white text-xl font-bold">{movie.title}</h3>
                 <p className="text-gray-300 text-sm">{movie.year} • {movie.category}</p>
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <div className="relative">
-                  <button onClick={() => setShowLangMenu(!showLangMenu)} className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-lg text-white">
-                    <Languages className="w-5 h-5" /> {LANG_NAMES[subtitleLang]} <ChevronDown className="w-4 h-4" />
+                  <button onClick={() => setShowLangMenu(!showLangMenu)} className="flex items-center gap-1 bg-white/10 px-3 py-1.5 rounded text-white text-sm">
+                    <Languages className="w-4 h-4" /> {LANG_NAMES[subtitleLang]} <ChevronDown className="w-3 h-3" />
                   </button>
                   {showLangMenu && (
-                    <div className="absolute top-full right-0 mt-2 bg-gray-900 rounded-xl overflow-hidden">
+                    <div className="absolute top-full right-0 mt-1 bg-gray-900 rounded-lg overflow-hidden min-w-[120px]">
                       {(['es', 'en', 'fr'] as SubtitleLang[]).map(l => (
-                        <button key={l} onClick={() => { setSubtitleLang(l); setShowLangMenu(false) }} className={`block w-full px-4 py-3 text-left ${subtitleLang === l ? 'text-red-500' : 'text-white'} hover:bg-gray-800`}>
+                        <button key={l} onClick={() => { setSubtitleLang(l); setShowLangMenu(false) }} className={`block w-full px-3 py-2 text-left text-sm ${subtitleLang === l ? 'text-red-500' : 'text-white'} hover:bg-gray-800`}>
                           {LANG_NAMES[l]}
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
-                <button onClick={() => setShowSubtitles(!showSubtitles)} className={`p-3 rounded-lg ${showSubtitles ? 'bg-red-600' : 'bg-white/10'} text-white`}>
-                  <Subtitles className="w-5 h-5" />
+                <button onClick={() => setShowSubtitles(!showSubtitles)} className={`p-2 rounded ${showSubtitles ? 'bg-red-600' : 'bg-white/10'} text-white`}>
+                  <Subtitles className="w-4 h-4" />
                 </button>
-                <button onClick={onClose} className="p-3 bg-white/10 rounded-lg text-white"><X className="w-5 h-5" /></button>
+                <button onClick={onClose} className="p-2 bg-white/10 rounded text-white"><X className="w-4 h-4" /></button>
               </div>
             </div>
             
-            {/* Center Play */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <button onClick={handlePlay} className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center pointer-events-auto">
-                {isPlaying ? <Pause className="w-10 h-10 text-white" fill="white" /> : <Play className="w-10 h-10 text-white ml-1" fill="white" />}
-              </button>
-            </div>
-            
             {/* Bottom */}
-            <div className="absolute bottom-0 left-0 right-0 p-6">
-              <div className="flex items-center gap-4 mb-4">
-                <span className="text-white text-sm">{formatTime(progress)}</span>
-                <div className="flex-1 h-1.5 bg-white/30 rounded-full cursor-pointer" onClick={e => {
+            <div className="absolute bottom-0 left-0 right-0 p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-white text-xs">{formatTime(progress)}</span>
+                <div className="flex-1 h-1 bg-white/30 rounded-full cursor-pointer" onClick={e => {
                   const rect = e.currentTarget.getBoundingClientRect()
                   setProgress(((e.clientX - rect.left) / rect.width) * 100)
                 }}>
                   <div className="h-full bg-red-600 rounded-full" style={{ width: `${progress}%` }} />
                 </div>
-                <span className="text-white text-sm">{formatTime(100)}</span>
+                <span className="text-white text-xs">{formatTime(100)}</span>
               </div>
               <div className="flex justify-between">
-                <div className="flex gap-4">
-                  <button onClick={handlePlay} className="text-white">{isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}</button>
-                  <button onClick={() => setIsMuted(!isMuted)} className="text-white">{isMuted ? <VolumeX className="w-8 h-8" /> : <Volume2 className="w-8 h-8" />}</button>
+                <div className="flex gap-3">
+                  <button onClick={handlePlay} className="text-white">{isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}</button>
+                  <button onClick={() => setIsMuted(!isMuted)} className="text-white">{isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}</button>
                 </div>
-                <button onClick={toggleFullscreen} className="text-white">{isFullscreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}</button>
+                <button onClick={toggleFullscreen} className="text-white">{isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}</button>
               </div>
             </div>
           </div>
@@ -270,26 +318,25 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
       {orientation === 'portrait' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black">
           <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: `url(${movie.thumbnail})` }} />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/80" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/80" />
           
-          <div className="relative z-10 text-center px-8">
-            <div className="w-28 h-28 mx-auto mb-6 bg-red-600 rounded-full flex items-center justify-center shadow-2xl shadow-red-600/50 animate-pulse">
-              <Play className="w-14 h-14 text-white ml-2" fill="white" />
+          <div className="relative z-10 text-center px-6">
+            <div className="w-24 h-24 mx-auto mb-4 bg-red-600 rounded-full flex items-center justify-center shadow-lg shadow-red-600/50 animate-pulse">
+              <Play className="w-12 h-12 text-white ml-1" fill="white" />
             </div>
-            <h2 className="text-white text-3xl font-bold mb-3">{movie.title}</h2>
-            <p className="text-gray-300 text-sm mb-2">{movie.year} • {movie.duration} min • ⭐ {movie.rating}</p>
-            <p className="text-gray-400 text-xs mb-8 line-clamp-2">{movie.description}</p>
+            <h2 className="text-white text-2xl font-bold mb-2">{movie.title}</h2>
+            <p className="text-gray-300 text-sm mb-1">{movie.year} • {movie.duration} min • ⭐ {movie.rating}</p>
+            <p className="text-gray-400 text-xs mb-6 line-clamp-2">{movie.description}</p>
             
-            <div className="flex items-center justify-center gap-2 text-gray-400">
-              <div className="w-8 h-8 border-2 border-gray-400 rounded flex items-center justify-center">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="4" y="6" width="16" height="12" rx="2" />
-                </svg>
-              </div>
-              <span className="text-sm">Rota tu dispositivo para ver</span>
+            <div className="flex items-center justify-center gap-2 text-gray-400 text-sm">
+              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="5" y="2" width="14" height="20" rx="2" />
+                <path d="M12 18h.01" />
+              </svg>
+              <span>Rota tu dispositivo para ver</span>
             </div>
             
-            <button onClick={onClose} className="mt-8 px-6 py-2 bg-white/10 rounded-full text-white text-sm hover:bg-white/20">Cerrar</button>
+            <button onClick={onClose} className="mt-6 px-5 py-2 bg-white/10 rounded-full text-white text-sm hover:bg-white/20 transition">Cerrar</button>
           </div>
         </div>
       )}

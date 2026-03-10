@@ -4,6 +4,76 @@
 Migrating Vertiflix streaming platform from vanilla HTML/CSS/JS to Next.js 15 with Netflix-style UI.
 
 ---
+## Task ID: 3 - Flujo Conversacional para Agregar Películas
+### Work Task
+Implementar flujo conversacional paso a paso en el bot de Telegram para agregar películas:
+1. Video → Imagen → Título → Año → Categoría → Guardar
+2. Integrar con el sistema de películas existente
+3. Mostrar teclado con categorías disponibles
+
+### Work Summary
+- Updated `/api/telegram/webhook/route.ts`:
+  - Sistema de sesiones por chatId para manejar estados
+  - Flujo conversacional de 5 pasos con teclados interactivos
+  - Teclado con categorías (Acción, Drama, Comedia, Terror, etc.)
+  - Teclado de confirmación antes de guardar
+  - Comandos: /start, /nueva, /list, /pendientes, /cancelar
+  - Persistencia en archivos JSON separados (sesiones y películas)
+
+- Updated `/api/movies/route.ts`:
+  - Changed runtime from edge to nodejs
+  - Carga películas de Telegram junto con las demo
+  - Combina y ordena por fecha de creación
+  - DELETE endpoint para eliminar películas
+
+- Updated AdminPanel.tsx:
+  - Nuevo diseño de instrucciones con pasos numerados
+  - Muestra el flujo completo: Video → Imagen → Título → Año → Categoría
+  - Indicadores visuales para cada paso
+
+### Key Features
+- Flujo guiado con teclados interactivos
+- Posibilidad de saltar la imagen (usa default por categoría)
+- Edición antes de confirmar
+- Películas aprobadas aparecen automáticamente en la página de inicio
+- Videos se reproducen directamente desde servidores de Telegram
+
+---
+## Task ID: 2 - Telegram Bot Integration Enhancement
+### Work Task
+Improve Telegram bot integration to:
+1. Extract thumbnails from videos automatically
+2. Persist movies data in JSON file
+3. Create webhook setup UI in admin panel
+4. Enable video streaming directly from Telegram servers
+
+### Work Summary
+- Updated `/api/telegram/webhook/route.ts`:
+  - Added automatic thumbnail extraction from Telegram videos (via `thumb` field)
+  - Created JSON file persistence at `/data/telegram-movies.json`
+  - Added movie metadata: fileId, thumbnailFileId, fileSize, fileName
+  - Added DELETE endpoint for removing movies
+  
+- Created `/api/telegram/setup/route.ts`:
+  - GET: Retrieve current webhook info from Telegram
+  - POST: Set webhook URL for the bot
+  - DELETE: Remove webhook configuration
+
+- Updated AdminPanel.tsx:
+  - Added webhook configuration section with status indicator
+  - Added URL input field to configure webhook
+  - Shows webhook status (active/not configured)
+  - Displays pending updates and errors
+  - Shows thumbnail status for each movie (✓ Thumbnail badge)
+  - Displays file size in MB for each video
+  - Added useEffect to auto-load data when entering Telegram tab
+
+### Key Technical Decisions
+- Thumbnails are extracted from Telegram's auto-generated video thumbnails
+- Videos stream directly from Telegram servers (no local storage needed)
+- Persistent storage uses JSON file for simplicity (can migrate to DB later)
+
+---
 ## Task ID: 1 - Setup Prisma Schema
 ### Work Task
 Create the Prisma schema for Movies and Users with all required fields for the streaming platform.

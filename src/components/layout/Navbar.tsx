@@ -103,9 +103,13 @@ export default function Navbar({ onSearch, onFavoritesClick, onAdminClick }: Nav
             <Heart className="w-5 h-5" />
           </button>
 
-          {/* User Avatar */}
-          <button className="flex items-center gap-2 hover:opacity-80 transition">
-            <div className="w-8 h-8 rounded bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center">
+          {/* User Avatar - Abre Panel Admin */}
+          <button 
+            onClick={onAdminClick}
+            className="flex items-center gap-2 hover:opacity-80 transition cursor-pointer"
+            title="Panel de Administración"
+          >
+            <div className="w-8 h-8 rounded bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center hover:from-red-400 hover:to-red-600 transition">
               <User className="w-5 h-5 text-white" />
             </div>
           </button>
@@ -140,6 +144,15 @@ export default function Navbar({ onSearch, onFavoritesClick, onAdminClick }: Nav
             <a href="#" className="text-gray-400 hover:text-white py-2">Películas</a>
             <a href="#" className="text-gray-400 hover:text-white py-2">Novedades</a>
             <a href="#" className="text-gray-400 hover:text-white py-2">Mi lista</a>
+            <button 
+              onClick={() => {
+                onAdminClick?.()
+                setMobileMenuOpen(false)
+              }}
+              className="text-red-500 hover:text-red-400 py-2 text-left font-medium"
+            >
+              ⚙️ Panel Admin
+            </button>
           </div>
         </div>
       )}

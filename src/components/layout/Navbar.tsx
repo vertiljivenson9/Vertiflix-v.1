@@ -9,9 +9,10 @@ import { cn } from '@/lib/utils'
 interface NavbarProps {
   onSearch?: (query: string) => void
   onFavoritesClick?: () => void
+  onAdminClick?: () => void
 }
 
-export default function Navbar({ onSearch, onFavoritesClick }: NavbarProps) {
+export default function Navbar({ onSearch, onFavoritesClick, onAdminClick }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')

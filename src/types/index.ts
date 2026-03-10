@@ -10,8 +10,8 @@ export interface Movie {
   rating: number
   featured: boolean
   language: string
-  createdAt: Date
-  updatedAt: Date
+  createdAt?: Date
+  updatedAt?: Date
 }
 
 export interface Category {
@@ -32,3 +32,25 @@ export const CATEGORIES: Category[] = [
   { id: 'animacion', name: 'Animación', icon: 'Sparkles' },
   { id: 'documental', name: 'Documental', icon: 'Film' },
 ]
+
+// Convert YouTube URL to embed format
+export function getYouTubeEmbedUrl(url: string): string {
+  if (!url) return ''
+  if (url.includes('youtube.com/embed')) return url
+  if (url.includes('youtube.com/watch')) {
+    const videoId = url.split('v=')[1]?.split('&')[0]
+    return `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1`
+  }
+  if (url.includes('youtu.be')) {
+    const videoId = url.split('youtu.be/')[1]?.split('?')[0]
+    return `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1`
+  }
+  // Google Drive embed
+  if (url.includes('drive.google.com')) {
+    const fileId = url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]
+    if (fileId) {
+      return `https://drive.google.com/file/d/${fileId}/preview`
+    }
+  }
+  return url
+}

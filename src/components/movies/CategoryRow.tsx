@@ -7,12 +7,13 @@ import type { Movie } from '@/types'
 
 interface CategoryRowProps {
   title: string
+  icon?: React.ReactNode
   movies: Movie[]
   onPlay?: (movie: Movie) => void
   isTop10?: boolean
 }
 
-export default function CategoryRow({ title, movies, onPlay, isTop10 = false }: CategoryRowProps) {
+export default function CategoryRow({ title, icon, movies, onPlay, isTop10 = false }: CategoryRowProps) {
   const rowRef = useRef<HTMLDivElement>(null)
 
   const scroll = (direction: 'left' | 'right') => {
@@ -29,6 +30,7 @@ export default function CategoryRow({ title, movies, onPlay, isTop10 = false }: 
     <div className="relative group/category py-4">
       {/* Title */}
       <h2 className="text-xl md:text-2xl font-bold text-white mb-2 px-4 md:px-12 flex items-center gap-2">
+        {icon}
         {title}
         {isTop10 && (
           <span className="text-red-600 text-sm font-normal">TOP 10</span>

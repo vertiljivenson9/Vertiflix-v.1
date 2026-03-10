@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
+import { Zap, Rocket, Film, Ghost, Star, Heart, Globe, TrendingUp } from 'lucide-react'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import MovieHero from '@/components/movies/MovieHero'
@@ -147,13 +148,15 @@ export default function Home() {
           </div>
         ) : (
           <>
-            <CategoryRow title="🔥 Tendencias ahora" movies={movies.slice(0, 6)} onPlay={handlePlay} />
-            <CategoryRow title="Top 10 en tu país" movies={[...movies].sort((a, b) => b.rating - a.rating).slice(0, 10)} onPlay={handlePlay} isTop10 />
-            <CategoryRow title="💥 Acción" movies={getMoviesByCategory('accion')} onPlay={handlePlay} />
-            <CategoryRow title="🚀 Ciencia Ficción" movies={getMoviesByCategory('ciencia-ficcion')} onPlay={handlePlay} />
-            <CategoryRow title="🎭 Drama" movies={getMoviesByCategory('drama')} onPlay={handlePlay} />
-            <CategoryRow title="😂 Comedia" movies={getMoviesByCategory('comedia')} onPlay={handlePlay} />
-            <CategoryRow title="👻 Terror" movies={getMoviesByCategory('terror')} onPlay={handlePlay} />
+            <CategoryRow title="Tendencias ahora" icon={<TrendingUp className="w-6 h-6 text-red-500" />} movies={movies.slice(0, 6)} onPlay={handlePlay} />
+            <CategoryRow title="Top 10 en tu país" icon={<Star className="w-6 h-6 text-yellow-500" />} movies={[...movies].sort((a, b) => b.rating - a.rating).slice(0, 10)} onPlay={handlePlay} isTop10 />
+            <CategoryRow title="Acción" icon={<Zap className="w-6 h-6 text-orange-500" />} movies={getMoviesByCategory('accion')} onPlay={handlePlay} />
+            <CategoryRow title="Ciencia Ficción" icon={<Rocket className="w-6 h-6 text-blue-500" />} movies={getMoviesByCategory('ciencia-ficcion')} onPlay={handlePlay} />
+            <CategoryRow title="Drama" icon={<Film className="w-6 h-6 text-purple-500" />} movies={getMoviesByCategory('drama')} onPlay={handlePlay} />
+            <CategoryRow title="Comedia" icon={<Heart className="w-6 h-6 text-pink-500" />} movies={getMoviesByCategory('comedia')} onPlay={handlePlay} />
+            <CategoryRow title="Terror" icon={<Ghost className="w-6 h-6 text-green-500" />} movies={getMoviesByCategory('terror')} onPlay={handlePlay} />
+            <CategoryRow title="Anime" icon={<Star className="w-6 h-6 text-cyan-500" />} movies={getMoviesByCategory('anime')} onPlay={handlePlay} />
+            <CategoryRow title="Series" icon={<Globe className="w-6 h-6 text-indigo-500" />} movies={getMoviesByCategory('serie')} onPlay={handlePlay} />
           </>
         )}
       </div>

@@ -42,32 +42,21 @@ export interface TelegramMovie {
   title: string
   description: string | null
   thumbnail: string
-  
-  // Video info
   video_url: string
   file_id: string | null
   thumbnail_file_id: string | null
-  
-  // Metadata
   category: string
   year: number
   duration: number
   rating: number
   language: string
-  
-  // File info
   file_name: string | null
   file_size: number | null
-  
-  // Telegram playback
   channel_message_id: number | null
   channel_username: string | null
   telegram_link: string | null
-  
-  // Admin
   added_by: string | null
   approved: boolean
-  
   created_at: string
   updated_at: string
 }
@@ -76,38 +65,19 @@ export interface BotSession {
   id: string
   chat_id: number
   step: string
-  
-  // Video
   video_file_id: string | null
   video_message_id: number | null
   channel_message_id: number | null
-  
-  // Image
   image_file_id: string | null
   image_url: string | null
-  
-  // Metadata
   title: string | null
   year: number | null
   category: string | null
   duration: number | null
   file_name: string | null
   file_size: number | null
-  
   created_at: string
   updated_at: string
-}
-
-export interface User {
-  id: string
-  telegram_id: number | null
-  username: string | null
-  first_name: string | null
-  last_name: string | null
-  is_admin: boolean
-  favorites: string[]
-  created_at: string
-  last_login: string | null
 }
 
 // =====================================================
@@ -135,7 +105,7 @@ export async function getAllMovies() {
   if (error2) console.error('Error fetching telegram movies:', error2)
   
   // Combinar y formatear
-  const formatted: Movie[] = [
+  const formatted: (Movie & { source: string; videoUrl?: string; telegramLink?: string })[] = [
     ...(localMovies || []).map((m: Movie) => ({ ...m, videoUrl: m.video_url, source: 'local' })),
     ...(telegramMovies || []).map((m: TelegramMovie) => ({ 
       ...m, 

@@ -254,16 +254,66 @@ export default function AdminPanel({ isOpen, onClose, movies, onAddMovie, onUpda
 
             {activeTab === 'telegram' && (
               <div className="space-y-6">
+                {/* Bot Info */}
+                <div className="bg-gradient-to-r from-[#0088cc]/20 to-transparent border border-[#0088cc]/30 rounded-lg p-4">
+                  <h3 className="font-bold mb-2 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-[#0088cc]" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18 1.897-.962 6.502-1.359 8.627-.168.9-.5 1.201-.82 1.23-.697.064-1.226-.461-1.901-.903-1.056-.692-1.653-1.123-2.678-1.799-1.185-.781-.417-1.21.258-1.911.177-.184 3.247-2.977 3.307-3.23.007-.032.015-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.139-5.062 3.345-.479.329-.913.489-1.302.481-.428-.009-1.252-.242-1.865-.442-.751-.244-1.349-.374-1.297-.789.027-.216.324-.437.893-.663 3.498-1.524 5.831-2.529 6.998-3.015 3.333-1.386 4.025-1.627 4.477-1.635.099-.002.321.023.465.141.121.099.154.232.17.324.015.093.034.306.019.472z"/>
+                    </svg>
+                    @VertiflixBot
+                  </h3>
+                  <p className="text-white/70 text-sm mb-3">
+                    Envía películas y videos directamente al bot para agregarlas a Vertiflix.
+                  </p>
+                  <a 
+                    href="https://t.me/VertiflixBot" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 bg-[#0088cc] hover:bg-[#0077bb] text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                  >
+                    Abrir Bot en Telegram
+                  </a>
+                </div>
+
+                {/* Instructions */}
                 <div className="bg-[#1a1a1a] border border-white/10 rounded-lg p-4">
-                  <h3 className="font-bold mb-4 flex items-center gap-2"><Download className="w-5 h-5 text-[#0088cc]" /> Importar desde Telegram</h3>
-                  <div className="flex gap-2 mb-4">
-                    <Input value={telegramUrl} onChange={e => setTelegramUrl(e.target.value)} placeholder="https://t.me/nombre_canal" className="bg-[#141414] border-white/20 flex-1" />
-                    <Input type="number" value={telegramLimit} onChange={e => setTelegramLimit(parseInt(e.target.value) || 10)} className="bg-[#141414] border-white/20 w-20" min={1} max={50} />
-                    <Button onClick={handleScrapeTelegram} disabled={isScraping} className="bg-[#0088cc] hover:bg-[#006699]">
-                      {isScraping ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Buscar'}
-                    </Button>
-                  </div>
-                  <p className="text-white/50 text-xs">Ingresa la URL del canal de Telegram (ej: https://t.me/peliculas_hd)</p>
+                  <h4 className="font-semibold mb-3">📱 Cómo agregar películas:</h4>
+                  <ol className="text-white/70 text-sm space-y-2 list-decimal list-inside">
+                    <li>Abre <span className="text-[#0088cc]">@VertiflixBot</span> en Telegram</li>
+                    <li>Envía <code className="bg-white/10 px-1 rounded">/start</code> para comenzar</li>
+                    <li>Reenvía o sube un video al bot</li>
+                    <li>Escribe el título como descripción del video</li>
+                    <li>La película aparecerá aquí automáticamente</li>
+                  </ol>
+                </div>
+
+                {/* Movies from Bot */}
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold">Películas recibidas vía Bot:</h4>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={async () => {
+                      setIsScraping(true)
+                      try {
+                        const res = await fetch('/api/telegram/webhook?password=admin123')
+                        const data = await res.json()
+                        if (data.movies && data.movies.length > 0) {
+                          setTelegramMovies(data.movies.map((m: TelegramMovie) => ({ ...m, selected: true })))
+                          toast.success(`${data.movies.length} películas encontradas`)
+                        } else {
+                          toast.info('No hay películas nuevas. Envía videos al bot primero.')
+                        }
+                      } catch {
+                        toast.error('Error al cargar')
+                      }
+                      setIsScraping(false)
+                    }}
+                    disabled={isScraping}
+                  >
+                    {isScraping ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                    Actualizar
+                  </Button>
                 </div>
 
                 {telegramMovies.length > 0 && (

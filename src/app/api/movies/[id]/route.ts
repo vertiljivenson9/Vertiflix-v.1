@@ -1,32 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { DEMO_MOVIES } from '@/lib/data';
+
+// In-memory storage for demo (resets on each deployment)
+let movies = [...DEMO_MOVIES];
 
 // GET - Fetch a single movie by ID
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params;
-    const movie = await db.movie.findUnique({
-      where: { id },
-    });
+  const { id } = await params;
+  const movie = movies.find(m => m.id === id);
 
-    if (!movie) {
-      return NextResponse.json(
-        { error: 'Película no encontrada' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(movie);
-  } catch (error) {
-    console.error('Error fetching movie:', error);
+  if (!movie) {
     return NextResponse.json(
-      { error: 'Error al obtener película' },
-      { status: 500 }
+      { error: 'Película no encontrada' },
+      { status: 404 }
     );
   }
+
+  return NextResponse.json(movie);
 }
 
 // PUT - Update a movie
@@ -37,38 +30,26 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const {
-      title,
-      description,
-      thumbnail,
-      videoUrl,
-      category,
-      year,
-      duration,
-      rating,
-      featured,
-      language,
-    } = body;
+    const index = movies.findIndex(m => m.id === id);
 
-    const movie = await db.movie.update({
-      where: { id },
-      data: {
-        title,
-        description: description || null,
-        thumbnail,
-        videoUrl,
-        category,
-        year: parseInt(year),
-        duration: parseInt(duration),
-        rating: parseFloat(rating) || 0,
-        featured: featured || false,
-        language: language || 'Español',
-      },
-    });
+    if (index === -1) {
+      return NextResponse.json(
+        { error: 'Película no encontrada' },
+        { status: 404 }
+      );
+    }
 
-    return NextResponse.json(movie);
-  } catch (error) {
-    console.error('Error updating movie:', error);
+    movies[index] = {
+      ...movies[index],
+      ...body,
+      year: parseInt(body.year) || movies[index].year,
+      duration: parseInt(body.duration) || movies[index].duration,
+      rating: parseFloat(body.rating) || movies[index].rating,
+      updatedAt: new Date(),
+    };
+
+    return NextResponse.json(movies[index]);
+  } catch {
     return NextResponse.json(
       { error: 'Error al actualizar película' },
       { status: 500 }
@@ -81,18 +62,16 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params;
-    await db.movie.delete({
-      where: { id },
-    });
+  const { id } = await params;
+  const index = movies.findIndex(m => m.id === id);
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting movie:', error);
+  if (index === -1) {
     return NextResponse.json(
-      { error: 'Error al eliminar película' },
-      { status: 500 }
+      { error: 'Película no encontrada' },
+      { status: 404 }
     );
   }
+
+  movies.splice(index, 1);
+  return NextResponse.json({ success: true });
 }

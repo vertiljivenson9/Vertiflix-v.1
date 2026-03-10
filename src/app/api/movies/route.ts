@@ -1,20 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { DEMO_MOVIES } from '@/lib/data';
+
+// In-memory storage for demo (resets on each deployment)
+let movies = [...DEMO_MOVIES];
 
 // GET - Fetch all movies
 export async function GET() {
-  try {
-    const movies = await db.movie.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
-    return NextResponse.json(movies);
-  } catch (error) {
-    console.error('Error fetching movies:', error);
-    return NextResponse.json(
-      { error: 'Error al obtener películas' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(movies);
 }
 
 // POST - Create a new movie
@@ -41,24 +33,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const movie = await db.movie.create({
-      data: {
-        title,
-        description: description || null,
-        thumbnail,
-        videoUrl,
-        category,
-        year: parseInt(year),
-        duration: parseInt(duration),
-        rating: parseFloat(rating) || 0,
-        featured: featured || false,
-        language: language || 'Español',
-      },
-    });
+    const newMovie = {
+      id: `movie-${Date.now()}`,
+      title,
+      description: description || null,
+      thumbnail,
+      videoUrl,
+      category,
+      year: parseInt(year),
+      duration: parseInt(duration),
+      rating: parseFloat(rating) || 0,
+      featured: featured || false,
+      language: language || 'Español',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
 
-    return NextResponse.json(movie, { status: 201 });
-  } catch (error) {
-    console.error('Error creating movie:', error);
+    movies.unshift(newMovie);
+    return NextResponse.json(newMovie, { status: 201 });
+  } catch {
     return NextResponse.json(
       { error: 'Error al crear película' },
       { status: 500 }

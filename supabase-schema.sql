@@ -1,10 +1,61 @@
--- ==========================================
--- VERTIFLIX - Schema de Base de Datos Supabase
--- ==========================================
+-- =============================================
+-- VERTIFLIX - ESQUEMA DE BASE DE DATOS SUPABASE
+-- =============================================
 -- Ejecuta este SQL en el SQL Editor de Supabase
--- https://supabase.com/dashboard/project/YOUR_PROJECT/sql
+-- =============================================
 
--- Crear tabla de películas
+-- Habilitar extensión UUID si no está habilitada
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- =============================================
+-- TABLA: telegram_movies
+-- Películas agregadas a través del bot de Telegram
+-- =============================================
+CREATE TABLE IF NOT EXISTS telegram_movies (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  thumbnail TEXT,
+  
+  -- Video info
+  video_url TEXT,
+  file_id TEXT,
+  thumbnail_file_id TEXT,
+  
+  -- Metadata
+  category TEXT DEFAULT 'otros',
+  year INTEGER DEFAULT 2024,
+  duration INTEGER DEFAULT 120,
+  rating DECIMAL(3,1) DEFAULT 7.0,
+  language TEXT DEFAULT 'Español',
+  
+  -- File info
+  file_name TEXT,
+  file_size BIGINT,
+  
+  -- Telegram playback
+  channel_message_id BIGINT,
+  channel_username TEXT DEFAULT 'VertiflixVideos',
+  telegram_link TEXT,
+  
+  -- Admin
+  added_by TEXT,
+  approved BOOLEAN DEFAULT true,
+  
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Índices para búsquedas frecuentes
+CREATE INDEX IF NOT EXISTS idx_telegram_movies_category ON telegram_movies(category);
+CREATE INDEX IF NOT EXISTS idx_telegram_movies_year ON telegram_movies(year);
+CREATE INDEX IF NOT EXISTS idx_telegram_movies_approved ON telegram_movies(approved);
+CREATE INDEX IF NOT EXISTS idx_telegram_movies_created ON telegram_movies(created_at DESC);
+
+-- =============================================
+-- TABLA: movies
+-- Películas agregadas manualmente (admin)
+-- =============================================
 CREATE TABLE IF NOT EXISTS movies (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
@@ -21,62 +72,126 @@ CREATE TABLE IF NOT EXISTS movies (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Habilitar Row Level Security
-ALTER TABLE movies ENABLE ROW LEVEL SECURITY;
-
--- Política: Todos pueden ver películas
-CREATE POLICY "Movies are viewable by everyone" ON movies
-  FOR SELECT USING (true);
-
--- Política: Admins pueden insertar (abierta para desarrollo)
-CREATE POLICY "Admins can insert movies" ON movies
-  FOR INSERT WITH CHECK (true);
-
--- Política: Admins pueden actualizar
-CREATE POLICY "Admins can update movies" ON movies
-  FOR UPDATE USING (true);
-
--- Política: Admins pueden eliminar
-CREATE POLICY "Admins can delete movies" ON movies
-  FOR DELETE USING (true);
-
--- Índices para mejor rendimiento
 CREATE INDEX IF NOT EXISTS idx_movies_category ON movies(category);
 CREATE INDEX IF NOT EXISTS idx_movies_featured ON movies(featured);
-CREATE INDEX IF NOT EXISTS idx_movies_rating ON movies(rating DESC);
-CREATE INDEX IF NOT EXISTS idx_movies_year ON movies(year DESC);
+
+-- =============================================
+-- TABLA: bot_sessions
+-- Sesiones del bot de Telegram para el flujo conversacional
+-- =============================================
+CREATE TABLE IF NOT EXISTS bot_sessions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  chat_id BIGINT NOT NULL UNIQUE,
+  step TEXT DEFAULT 'idle',
+  
+  -- Video
+  video_file_id TEXT,
+  video_message_id BIGINT,
+  channel_message_id BIGINT,
+  
+  -- Image
+  image_file_id TEXT,
+  image_url TEXT,
+  
+  -- Metadata
+  title TEXT,
+  year INTEGER,
+  category TEXT,
+  duration INTEGER,
+  file_name TEXT,
+  file_size BIGINT,
+  
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Índice para búsqueda rápida por chat_id
+CREATE INDEX IF NOT EXISTS idx_bot_sessions_chat_id ON bot_sessions(chat_id);
+
+-- =============================================
+-- TABLA: users
+-- Usuarios del bot de Telegram
+-- =============================================
+CREATE TABLE IF NOT EXISTS users (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  telegram_id BIGINT NOT NULL UNIQUE,
+  username TEXT,
+  first_name TEXT,
+  last_name TEXT,
+  is_admin BOOLEAN DEFAULT false,
+  favorites TEXT[] DEFAULT '{}',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  last_login TIMESTAMP WITH TIME ZONE
+);
+
+-- Índice para búsqueda por telegram_id
+CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
+
+-- =============================================
+-- FUNCIONES Y TRIGGERS
+-- =============================================
 
 -- Función para actualizar updated_at automáticamente
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
+  NEW.updated_at = NOW();
+  RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql;
 
--- Trigger para actualizar updated_at
+-- Triggers para actualizar updated_at
+DROP TRIGGER IF EXISTS update_telegram_movies_updated_at ON telegram_movies;
+CREATE TRIGGER update_telegram_movies_updated_at
+  BEFORE UPDATE ON telegram_movies
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
 DROP TRIGGER IF EXISTS update_movies_updated_at ON movies;
 CREATE TRIGGER update_movies_updated_at
-    BEFORE UPDATE ON movies
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+  BEFORE UPDATE ON movies
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
 
--- ==========================================
--- DATOS DE EJEMPLO (Opcional)
--- ==========================================
+DROP TRIGGER IF EXISTS update_bot_sessions_updated_at ON bot_sessions;
+CREATE TRIGGER update_bot_sessions_updated_at
+  BEFORE UPDATE ON bot_sessions
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
 
-INSERT INTO movies (title, description, thumbnail, video_url, category, year, duration, rating, featured, language) VALUES
-('Dune: Parte Dos', 'Paul Atreides se une a los Fremen mientras busca venganza contra los conspiradores que destruyeron a su familia.', 'https://image.tmdb.org/t/p/w500/8b8R8l88Qje9dn9OE8PY05Nxl1X.jpg', 'https://www.youtube.com/embed/Way9DexnyUs', 'ciencia-ficcion', 2024, 166, 8.8, true, 'Español'),
-('Oppenheimer', 'La historia del físico J. Robert Oppenheimer y su papel en el desarrollo de la bomba atómica.', 'https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg', 'https://www.youtube.com/embed/uYPbbksJxIg', 'drama', 2023, 180, 8.9, true, 'Español'),
-('Spider-Man: Cruzando el Multiverso', 'Miles Morales regresa para una nueva aventura a través del multiverso.', 'https://image.tmdb.org/t/p/w500/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg', 'https://www.youtube.com/embed/shW9i6k8cB0', 'animacion', 2023, 140, 8.7, true, 'Español'),
-('John Wick 4', 'John Wick descubre un camino para derrotar a La Mesa Alta.', 'https://image.tmdb.org/t/p/w500/vZloFAK7NmvMGKE7VkF5UHaz0I.jpg', 'https://www.youtube.com/embed/qEVUtrk8_B4', 'accion', 2023, 169, 8.2, false, 'Español'),
-('Barbie', 'Barbie y Ken descubren las alegrías y peligros de vivir entre los humanos.', 'https://image.tmdb.org/t/p/w500/iuFNMS8U5cb6xfzi51Dbkovj7vM.jpg', 'https://www.youtube.com/embed/pBk4NYhWNMM', 'comedia', 2023, 114, 7.0, false, 'Español'),
-('Pobres Criaturas', 'La historia de Bella Baxter, una joven resucitada por el científico Dr. Godwin Baxter.', 'https://image.tmdb.org/t/p/w500/kCGlIMHnOm8JPXq3rXM6c5wMxcT.jpg', 'https://www.youtube.com/embed/RlbR5N6veqw', 'drama', 2023, 141, 8.0, false, 'Español'),
-('Misión Imposible: Sentencia Mortal', 'Ethan Hunt se enfrenta a su misión más peligrosa.', 'https://image.tmdb.org/t/p/w500/NNxYkU70HPurnNCSiCjYAmacwm.jpg', 'https://www.youtube.com/embed/avz06PDqDbM', 'accion', 2023, 163, 7.8, false, 'Español'),
-('Guardianes de la Galaxia Vol. 3', 'Los Guardianes deben proteger a uno de los suyos.', 'https://image.tmdb.org/t/p/w500/r2J02Z2OpNTctfOSN1Ydgii51I3.jpg', 'https://www.youtube.com/embed/u3V5KDHRQvk', 'ciencia-ficcion', 2023, 150, 8.0, false, 'Español'),
-('Wonka', 'La historia del joven Willy Wonka.', 'https://image.tmdb.org/t/p/w500/qhb1qOilapbapxWQn9jtRCMwXJF.jpg', 'https://www.youtube.com/embed/otNh9bTjXWg', 'comedia', 2023, 116, 7.2, false, 'Español'),
-('Aquaman y el Reino Perdido', 'Aquaman debe forjar una alianza para proteger Atlantis.', 'https://image.tmdb.org/t/p/w500/7lTnXOy0iNtBAdRP3TZvaKJ77F6.jpg', 'https://www.youtube.com/embed/UGc5Tzz19UY', 'accion', 2023, 124, 6.0, false, 'Español');
+-- =============================================
+-- POLÍTICAS RLS (Row Level Security)
+-- =============================================
 
--- Verificar inserción
-SELECT * FROM movies ORDER BY created_at DESC;
+-- Habilitar RLS
+ALTER TABLE telegram_movies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE movies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bot_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- Políticas para telegram_movies (lectura pública, escritura solo servicio)
+CREATE POLICY "Public read access for approved movies" ON telegram_movies
+  FOR SELECT USING (approved = true);
+
+CREATE POLICY "Service role full access on telegram_movies" ON telegram_movies
+  FOR ALL USING (true) WITH CHECK (true);
+
+-- Políticas para movies
+CREATE POLICY "Public read access on movies" ON movies
+  FOR SELECT USING (true);
+
+CREATE POLICY "Service role full access on movies" ON movies
+  FOR ALL USING (true) WITH CHECK (true);
+
+-- Políticas para bot_sessions (solo servicio)
+CREATE POLICY "Service role full access on bot_sessions" ON bot_sessions
+  FOR ALL USING (true) WITH CHECK (true);
+
+-- Políticas para users (solo servicio)
+CREATE POLICY "Service role full access on users" ON users
+  FOR ALL USING (true) WITH CHECK (true);
+
+-- =============================================
+-- Confirmación
+-- =============================================
+SELECT 'Esquema creado exitosamente ✓' as status;

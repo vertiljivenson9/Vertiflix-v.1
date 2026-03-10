@@ -14,9 +14,13 @@ export interface Movie {
   updatedAt?: Date
   // Campos para videos de Telegram
   fileId?: string
+  thumbnailFileId?: string
   telegramLink?: string
-  messageId?: number
-  chatId?: number
+  channelMessageId?: number
+  channelUsername?: string
+  fileName?: string
+  fileSize?: number
+  addedBy?: string
 }
 
 export interface Category {

@@ -4,6 +4,29 @@
 Migrating Vertiflix streaming platform from vanilla HTML/CSS/JS to Next.js 15 with Netflix-style UI.
 
 ---
+## Task ID: 4 - HTML5 Video Player for Telegram Videos
+### Work Task
+Implementar reproductor de video HTML5 para reproducir videos de Telegram directamente con streaming progresivo.
+
+### Work Summary
+- Updated `CoverPlayer.tsx`:
+  - Native HTML5 video player for Telegram and direct video URLs
+  - Video streams progressively while downloading (no waiting for full download)
+  - Thumbnail hides automatically when video starts playing
+  - Buffer progress indicator (blue bar showing download progress)
+  - Loading spinner while buffering
+  - Error handling with retry button
+  - Proper time tracking and seeking
+  - Full screen support for all video types
+
+### Key Features
+- Streaming progresivo: El video se reproduce mientras se descarga
+- El thumbnail desaparece cuando el video inicia
+- Indicador de buffer azul muestra progreso de descarga
+- Controles completos: play/pause, seek, mute, fullscreen
+- Soporte para YouTube, Google Drive, Telegram y videos directos
+
+---
 ## Task ID: 3 - Flujo Conversacional para Agregar Películas
 ### Work Task
 Implementar flujo conversacional paso a paso en el bot de Telegram para agregar películas:

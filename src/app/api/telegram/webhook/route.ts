@@ -19,6 +19,7 @@ interface MovieSession {
   step: 'waiting_video' | 'waiting_image' | 'waiting_title' | 'waiting_year' | 'waiting_category' | 'confirming'
   videoFileId?: string
   videoUrl?: string
+  videoMessageId?: number
   imageFileId?: string
   imageUrl?: string
   title?: string
@@ -48,6 +49,10 @@ interface TelegramMovie {
   fileName?: string
   fileSize?: number
   approved: boolean
+  // Para reproducción en Telegram
+  messageId?: number
+  chatId?: number
+  telegramLink?: string
 }
 
 // Categorías disponibles
@@ -345,9 +350,11 @@ export async function POST(request: NextRequest) {
         const fileId = video.file_id
         const duration = video.duration || 0
         const fileSize = video.file_size || 0
+        const messageId = message.message_id
         
         session.videoFileId = fileId
         session.videoUrl = await getFileUrl(fileId)
+        session.videoMessageId = messageId
         session.duration = Math.floor(duration / 60)
         session.fileName = caption || `Video_${Date.now()}`
         session.fileSize = fileSize
@@ -555,6 +562,10 @@ export async function POST(request: NextRequest) {
           thumbnailUrl = defaultThumbnails[session.category!] || defaultThumbnails['otros']
         }
         
+        // Crear enlace de Telegram para el video
+        // El usuario puede ir directamente al mensaje con el video
+        const telegramLink = `https://t.me/VertiflixBot?start=play_${session.videoMessageId || ''}`
+        
         const movie: TelegramMovie = {
           id: `tg_${Date.now()}_${session.videoFileId?.substring(0, 8) || 'movie'}`,
           title: session.title!,
@@ -572,7 +583,11 @@ export async function POST(request: NextRequest) {
           addedAt: new Date().toISOString(),
           fileName: session.fileName,
           fileSize: session.fileSize,
-          approved: true // Auto-aprobado, se puede cambiar a false si requiere aprobación
+          approved: true,
+          // Para reproducción en Telegram
+          messageId: session.videoMessageId,
+          chatId: chatId,
+          telegramLink: telegramLink
         }
         
         const movies = loadMovies()

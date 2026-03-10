@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { X, Play, Pause, Volume2, VolumeX, Subtitles, Languages, ChevronDown, Maximize, Minimize, Loader2, AlertCircle } from 'lucide-react'
+import { X, Play, Pause, Volume2, VolumeX, Subtitles, Languages, ChevronDown, Maximize, Minimize, Loader2, AlertCircle, ExternalLink, RotateCcw } from 'lucide-react'
 import type { Movie } from '@/types'
 
 interface CoverPlayerProps {
@@ -99,16 +99,20 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
   const [buffered, setBuffered] = useState(0)
   const [error, setError] = useState<string | null>(null)
   
+  // Estado para transición a Telegram
+  const [showTelegramTransition, setShowTelegramTransition] = useState(false)
+  const [transitionProgress, setTransitionProgress] = useState(0)
+  
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const hideTimer = useRef<NodeJS.Timeout>()
 
   // Detect video type
-  const isTelegram = movie.videoUrl?.includes('t.me') || movie.videoUrl?.includes('telegram.org') || movie.id?.startsWith('tg_')
+  const isTelegram = movie.id?.startsWith('tg_') || movie.videoUrl?.includes('telegram') || movie.videoUrl?.includes('t.me')
   const isGoogleDrive = movie.videoUrl?.includes('drive.google.com')
   const isYouTube = movie.videoUrl?.includes('youtube') || movie.videoUrl?.includes('youtu.be')
-  const isDirectVideo = !isYouTube && !isGoogleDrive && movie.videoUrl && !movie.videoUrl.includes('t.me')
+  const isDirectVideo = !isYouTube && !isGoogleDrive && !isTelegram && movie.videoUrl
 
   // Detect orientation
   useEffect(() => {
@@ -191,9 +195,51 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
     return movie.duration ? `${movie.duration}:00` : '0:00'
   }, [duration, movie.duration, formatTime])
 
-  // Play video
+  // Abrir en Telegram con transición
+  const openInTelegram = useCallback(() => {
+    setShowTelegramTransition(true)
+    
+    // Animación de progreso
+    let progress = 0
+    const interval = setInterval(() => {
+      progress += 5
+      setTransitionProgress(progress)
+      
+      if (progress >= 100) {
+        clearInterval(interval)
+        
+        // Abrir Telegram
+        const telegramUrl = movie.telegramLink || `https://t.me/VertiflixBot`
+        
+        // Intentar abrir la app de Telegram primero
+        const deepLink = `tg://resolve?domain=VertiflixBot`
+        
+        // Crear un iframe oculto para intentar abrir la app
+        const iframe = document.createElement('iframe')
+        iframe.style.display = 'none'
+        iframe.src = deepLink
+        document.body.appendChild(iframe)
+        
+        // Después de un pequeño delay, abrir el enlace web
+        setTimeout(() => {
+          window.open(telegramUrl, '_blank')
+          document.body.removeChild(iframe)
+          setShowTelegramTransition(false)
+          setTransitionProgress(0)
+        }, 500)
+      }
+    }, 50)
+  }, [movie.telegramLink])
+
+  // Play video - Para Telegram abre la transición
   const handlePlay = useCallback(async () => {
-    // For HTML5 video (Telegram, direct links)
+    // Para videos de Telegram, mostrar transición
+    if (isTelegram) {
+      openInTelegram()
+      return
+    }
+
+    // For HTML5 video
     if (videoRef.current) {
       try {
         if (isPlaying) {
@@ -223,7 +269,7 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
       }
       setIsPlaying(!isPlaying)
     }
-  }, [isPlaying, videoStarted])
+  }, [isPlaying, videoStarted, isTelegram, openInTelegram])
 
   // Seek
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -276,6 +322,49 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
   return (
     <div ref={containerRef} className="fixed inset-0 z-50 bg-black" onMouseMove={() => setShowControls(true)}>
       
+      {/* CAPA DE TRANSICIÓN A TELEGRAM */}
+      {showTelegramTransition && (
+        <div className="absolute inset-0 z-[100] bg-black flex flex-col items-center justify-center">
+          {/* Fondo con blur del thumbnail */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center scale-110 blur-xl opacity-30"
+            style={{ backgroundImage: `url(${movie.thumbnail})` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black via-black/90 to-black" />
+          
+          {/* Contenido de transición */}
+          <div className="relative z-10 text-center px-8 max-w-md">
+            {/* Logo animado de Telegram */}
+            <div className="w-24 h-24 mx-auto mb-6 relative">
+              <div className="absolute inset-0 bg-[#0088cc] rounded-full animate-ping opacity-25" />
+              <div className="relative w-24 h-24 bg-[#0088cc] rounded-full flex items-center justify-center">
+                <svg className="w-14 h-14 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18 1.897-.962 6.502-1.359 8.627-.168.9-.5 1.201-.82 1.23-.697.064-1.226-.461-1.901-.903-1.056-.692-1.653-1.123-2.678-1.799-1.185-.781-.417-1.21.258-1.911.177-.184 3.247-2.977 3.307-3.23.007-.032.015-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.139-5.062 3.345-.479.329-.913.489-1.302.481-.428-.009-1.252-.242-1.865-.442-.751-.244-1.349-.374-1.297-.789.027-.216.324-.437.893-.663 3.498-1.524 5.831-2.529 6.998-3.015 3.333-1.386 4.025-1.627 4.477-1.635.099-.002.321.023.465.141.121.099.154.232.17.324.015.093.034.306.019.472z"/>
+                </svg>
+              </div>
+            </div>
+            
+            {/* Texto */}
+            <h2 className="text-white text-xl font-bold mb-2">{movie.title}</h2>
+            <p className="text-white/60 text-sm mb-6">Conectando con Telegram...</p>
+            
+            {/* Barra de progreso */}
+            <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden mb-4">
+              <div 
+                className="h-full bg-[#0088cc] transition-all duration-100"
+                style={{ width: `${transitionProgress}%` }}
+              />
+            </div>
+            
+            {/* Info */}
+            <div className="flex items-center justify-center gap-2 text-white/40 text-xs">
+              <ExternalLink className="w-3 h-3" />
+              <span>El video se abrirá en Telegram</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* LANDSCAPE MODE */}
       {orientation === 'landscape' && (
         <div className="absolute inset-0 bg-black flex items-center justify-center">
@@ -297,11 +386,25 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
               />
             )}
 
-            {/* Telegram/Direct Video - HTML5 Player */}
-            {(isTelegram || isDirectVideo) && (
+            {/* Telegram Video - Show special overlay */}
+            {isTelegram && !videoStarted && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+                <div className="w-16 h-16 rounded-full bg-[#0088cc] flex items-center justify-center mb-4">
+                  <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18 1.897-.962 6.502-1.359 8.627-.168.9-.5 1.201-.82 1.23-.697.064-1.226-.461-1.901-.903-1.056-.692-1.653-1.123-2.678-1.799-1.185-.781-.417-1.21.258-1.911.177-.184 3.247-2.977 3.307-3.23.007-.032.015-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.139-5.062 3.345-.479.329-.913.489-1.302.481-.428-.009-1.252-.242-1.865-.442-.751-.244-1.349-.374-1.297-.789.027-.216.324-.437.893-.663 3.498-1.524 5.831-2.529 6.998-3.015 3.333-1.386 4.025-1.627 4.477-1.635.099-.002.321.023.465.141.121.099.154.232.17.324.015.093.034.306.019.472z"/>
+                  </svg>
+                </div>
+                <p className="text-white/80 text-sm text-center px-4">
+                  El video se reproducirá en Telegram
+                </p>
+              </div>
+            )}
+
+            {/* Direct Video - HTML5 Player */}
+            {!isTelegram && (isDirectVideo || isGoogleDrive) && (
               <video
                 ref={videoRef}
-                src={movie.videoUrl}
+                src={isGoogleDrive ? undefined : movie.videoUrl}
                 className={`w-full h-full bg-black ${videoStarted ? 'opacity-100' : 'opacity-0'}`}
                 playsInline
                 preload="metadata"
@@ -332,18 +435,8 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
               />
             )}
             
-            {/* Google Drive */}
-            {isGoogleDrive && (
-              <iframe 
-                src={movie.videoUrl?.replace('/view', '/preview')} 
-                className="w-full h-full" 
-                allow="autoplay"
-                allowFullScreen
-              />
-            )}
-            
             {/* Loading overlay */}
-            {isLoading && (
+            {isLoading && !isTelegram && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                 <Loader2 className="w-12 h-12 text-white animate-spin" />
               </div>
@@ -369,7 +462,7 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
             )}
             
             {/* Buffering indicator */}
-            {(isTelegram || isDirectVideo) && buffered < 100 && videoStarted && (
+            {!isTelegram && (isDirectVideo) && buffered < 100 && videoStarted && (
               <div className="absolute bottom-16 left-0 right-0 px-4">
                 <div className="h-1 bg-white/20 rounded-full overflow-hidden">
                   <div 
@@ -432,6 +525,10 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
                 >
                   {isLoading ? (
                     <Loader2 className="w-8 h-8 text-white animate-spin" />
+                  ) : isTelegram ? (
+                    <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18 1.897-.962 6.502-1.359 8.627-.168.9-.5 1.201-.82 1.23-.697.064-1.226-.461-1.901-.903-1.056-.692-1.653-1.123-2.678-1.799-1.185-.781-.417-1.21.258-1.911.177-.184 3.247-2.977 3.307-3.23.007-.032.015-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.139-5.062 3.345-.479.329-.913.489-1.302.481-.428-.009-1.252-.242-1.865-.442-.751-.244-1.349-.374-1.297-.789.027-.216.324-.437.893-.663 3.498-1.524 5.831-2.529 6.998-3.015 3.333-1.386 4.025-1.627 4.477-1.635.099-.002.321.023.465.141.121.099.154.232.17.324.015.093.034.306.019.472z"/>
+                    </svg>
                   ) : (
                     <Play className="w-10 h-10 text-white ml-1" fill="white" />
                   )}
@@ -441,35 +538,45 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
             
             {/* Bottom */}
             <div className="absolute bottom-0 left-0 right-0 p-3">
-              {/* Progress bar with buffer */}
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-white text-xs min-w-[40px]">{formatTime(currentTime)}</span>
-                <div 
-                  className="flex-1 h-1 bg-white/30 rounded-full cursor-pointer relative"
-                  onClick={handleSeek}
-                >
-                  {/* Buffered */}
-                  {(isTelegram || isDirectVideo) && (
-                    <div 
-                      className="absolute h-full bg-blue-500/30 rounded-full"
-                      style={{ width: `${buffered}%` }}
-                    />
-                  )}
-                  {/* Progress */}
-                  <div className="h-full bg-red-600 rounded-full relative" style={{ width: `${progress}%` }}>
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-red-600 rounded-full border-2 border-white" />
+              {/* Progress bar */}
+              {!isTelegram && (
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-white text-xs min-w-[40px]">{formatTime(currentTime)}</span>
+                  <div 
+                    className="flex-1 h-1 bg-white/30 rounded-full cursor-pointer relative"
+                    onClick={handleSeek}
+                  >
+                    {/* Buffered */}
+                    {isDirectVideo && (
+                      <div 
+                        className="absolute h-full bg-blue-500/30 rounded-full"
+                        style={{ width: `${buffered}%` }}
+                      />
+                    )}
+                    {/* Progress */}
+                    <div className="h-full bg-red-600 rounded-full relative" style={{ width: `${progress}%` }}>
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-red-600 rounded-full border-2 border-white" />
+                    </div>
                   </div>
+                  <span className="text-white text-xs min-w-[40px]">{formatTotalTime()}</span>
                 </div>
-                <span className="text-white text-xs min-w-[40px]">{formatTotalTime()}</span>
-              </div>
+              )}
               <div className="flex justify-between">
                 <div className="flex gap-3">
                   <button onClick={handlePlay} className="text-white">
-                    {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                    {isTelegram ? (
+                      <ExternalLink className="w-5 h-5" />
+                    ) : isPlaying ? (
+                      <Pause className="w-5 h-5" />
+                    ) : (
+                      <Play className="w-5 h-5" />
+                    )}
                   </button>
-                  <button onClick={() => setIsMuted(!isMuted)} className="text-white">
-                    {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-                  </button>
+                  {!isTelegram && (
+                    <button onClick={() => setIsMuted(!isMuted)} className="text-white">
+                      {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                    </button>
+                  )}
                 </div>
                 <button onClick={toggleFullscreen} className="text-white">
                   {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
@@ -493,6 +600,15 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
             <h2 className="text-white text-xl font-bold mb-2">{movie.title}</h2>
             <p className="text-gray-300 text-sm mb-1">{movie.year} • {movie.duration} min • ⭐ {movie.rating}</p>
             <p className="text-gray-400 text-xs mb-5 line-clamp-2">{movie.description}</p>
+            
+            {isTelegram && (
+              <div className="flex items-center justify-center gap-2 text-[#0088cc] text-sm mb-4">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18 1.897-.962 6.502-1.359 8.627-.168.9-.5 1.201-.82 1.23-.697.064-1.226-.461-1.901-.903-1.056-.692-1.653-1.123-2.678-1.799-1.185-.781-.417-1.21.258-1.911.177-.184 3.247-2.977 3.307-3.23.007-.032.015-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.139-5.062 3.345-.479.329-.913.489-1.302.481-.428-.009-1.252-.242-1.865-.442-.751-.244-1.349-.374-1.297-.789.027-.216.324-.437.893-.663 3.498-1.524 5.831-2.529 6.998-3.015 3.333-1.386 4.025-1.627 4.477-1.635.099-.002.321.023.465.141.121.099.154.232.17.324.015.093.034.306.019.472z"/>
+                </svg>
+                <span>Disponible en Telegram</span>
+              </div>
+            )}
             
             <div className="flex items-center justify-center gap-2 text-gray-400 text-sm">
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

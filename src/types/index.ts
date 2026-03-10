@@ -12,6 +12,11 @@ export interface Movie {
   language: string
   createdAt?: Date
   updatedAt?: Date
+  // Campos para videos de Telegram
+  fileId?: string
+  telegramLink?: string
+  messageId?: number
+  chatId?: number
 }
 
 export interface Category {

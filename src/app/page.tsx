@@ -1,52 +1,56 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import MovieHero from '@/components/movies/MovieHero'
 import CategoryRow from '@/components/movies/CategoryRow'
 import MovieModal from '@/components/movies/MovieModal'
 import VideoPlayer from '@/components/player/VideoPlayer'
-import { DEMO_MOVIES, CATEGORIES, getYouTubeEmbedUrl } from '@/lib/data'
+import AdminPanel from '@/components/admin/AdminPanel'
+import { DEMO_MOVIES } from '@/lib/data'
 import type { Movie } from '@/types'
 
 export default function Home() {
+  const [movies, setMovies] = useState<Movie[]>(DEMO_MOVIES)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null)
   const [playingMovie, setPlayingMovie] = useState<Movie | null>(null)
-  const [favorites, setFavorites] = useState<string[]>([])
   const [showAdmin, setShowAdmin] = useState(false)
 
-  // Featured movie (first one with featured=true or first in list)
-  const featuredMovie = useMemo(() => {
-    return DEMO_MOVIES.find(m => m.featured) || DEMO_MOVIES[0]
+  // Load movies from API on mount
+  useEffect(() => {
+    fetch('/api/movies')
+      .then(res => res.json())
+      .then(data => {
+        if (data.movies && data.movies.length > 0) {
+          setMovies(data.movies)
+        }
+      })
+      .catch(() => {})
   }, [])
+
+  // Featured movie
+  const featuredMovie = useMemo(() => {
+    return movies.find(m => m.featured) || movies[0]
+  }, [movies])
 
   // Filter movies by search
   const filteredMovies = useMemo(() => {
-    if (!searchQuery) return DEMO_MOVIES
+    if (!searchQuery) return movies
     const query = searchQuery.toLowerCase()
-    return DEMO_MOVIES.filter(
+    return movies.filter(
       m => m.title.toLowerCase().includes(query) ||
            m.category.toLowerCase().includes(query) ||
            m.description?.toLowerCase().includes(query)
     )
-  }, [searchQuery])
+  }, [searchQuery, movies])
 
   // Get movies by category
-  const getMoviesByCategory = (category: string) => {
-    if (category === 'todas') return DEMO_MOVIES
-    return DEMO_MOVIES.filter(m => m.category === category)
-  }
-
-  // Toggle favorite
-  const toggleFavorite = (movieId: string) => {
-    setFavorites(prev =>
-      prev.includes(movieId)
-        ? prev.filter(id => id !== movieId)
-        : [...prev, movieId]
-    )
-  }
+  const getMoviesByCategory = useCallback((category: string) => {
+    if (category === 'todas') return movies
+    return movies.filter(m => m.category === category)
+  }, [movies])
 
   // Handle play
   const handlePlay = (movie: Movie) => {
@@ -54,17 +58,53 @@ export default function Home() {
     setSelectedMovie(null)
   }
 
+  // Add movie
+  const handleAddMovie = async (movieData: Omit<Movie, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newMovie: Movie = {
+      ...movieData,
+      id: Date.now().toString(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    setMovies(prev => [...prev, newMovie])
+    
+    // Save to API
+    await fetch('/api/movies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...movieData, adminPassword: 'admin123' })
+    })
+  }
+
+  // Update movie
+  const handleUpdateMovie = async (id: string, movieData: Partial<Movie>) => {
+    setMovies(prev => prev.map(m => m.id === id ? { ...m, ...movieData, updatedAt: new Date() } : m))
+    
+    await fetch(`/api/movies/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...movieData, adminPassword: 'admin123' })
+    })
+  }
+
+  // Delete movie
+  const handleDeleteMovie = async (id: string) => {
+    setMovies(prev => prev.filter(m => m.id !== id))
+    
+    await fetch(`/api/movies/${id}?password=admin123`, {
+      method: 'DELETE'
+    })
+  }
+
   return (
     <main className="bg-[#141414] min-h-screen">
-      {/* Navbar */}
       <Navbar
         onSearch={setSearchQuery}
-        onFavoritesClick={() => {/* TODO: Show favorites modal */}}
+        onFavoritesClick={() => {}}
         onAdminClick={() => setShowAdmin(true)}
       />
 
-      {/* Hero Section */}
-      {!searchQuery && (
+      {!searchQuery && featuredMovie && (
         <MovieHero
           movie={featuredMovie}
           onPlay={() => handlePlay(featuredMovie)}
@@ -72,10 +112,8 @@ export default function Home() {
         />
       )}
 
-      {/* Search Results or Categories */}
       <div className="-mt-32 relative z-10">
         {searchQuery ? (
-          // Search Results
           <div className="pt-40 px-4 md:px-12">
             <h2 className="text-white text-2xl font-bold mb-4">
               Resultados para &quot;{searchQuery}&quot;
@@ -108,78 +146,32 @@ export default function Home() {
             )}
           </div>
         ) : (
-          // Category Rows
           <>
-            {/* Trending Now */}
-            <CategoryRow
-              title="🔥 Tendencias ahora"
-              movies={DEMO_MOVIES.slice(0, 6)}
-              onPlay={handlePlay}
-            />
-
-            {/* Top 10 */}
-            <CategoryRow
-              title="Top 10 en tu país"
-              movies={[...DEMO_MOVIES].sort((a, b) => b.rating - a.rating).slice(0, 10)}
-              onPlay={handlePlay}
-              isTop10
-            />
-
-            {/* Action */}
-            <CategoryRow
-              title="💥 Películas de Acción"
-              movies={getMoviesByCategory('accion')}
-              onPlay={handlePlay}
-            />
-
-            {/* Sci-Fi */}
-            <CategoryRow
-              title="🚀 Ciencia Ficción"
-              movies={getMoviesByCategory('ciencia-ficcion')}
-              onPlay={handlePlay}
-            />
-
-            {/* Drama */}
-            <CategoryRow
-              title="🎭 Dramas aclamados"
-              movies={getMoviesByCategory('drama')}
-              onPlay={handlePlay}
-            />
-
-            {/* Comedy */}
-            <CategoryRow
-              title="😂 Comedia"
-              movies={getMoviesByCategory('comedia')}
-              onPlay={handlePlay}
-            />
-
-            {/* Terror */}
-            <CategoryRow
-              title="👻 Terror y Suspense"
-              movies={getMoviesByCategory('terror')}
-              onPlay={handlePlay}
-            />
+            <CategoryRow title="🔥 Tendencias ahora" movies={movies.slice(0, 6)} onPlay={handlePlay} />
+            <CategoryRow title="Top 10 en tu país" movies={[...movies].sort((a, b) => b.rating - a.rating).slice(0, 10)} onPlay={handlePlay} isTop10 />
+            <CategoryRow title="💥 Acción" movies={getMoviesByCategory('accion')} onPlay={handlePlay} />
+            <CategoryRow title="🚀 Ciencia Ficción" movies={getMoviesByCategory('ciencia-ficcion')} onPlay={handlePlay} />
+            <CategoryRow title="🎭 Drama" movies={getMoviesByCategory('drama')} onPlay={handlePlay} />
+            <CategoryRow title="😂 Comedia" movies={getMoviesByCategory('comedia')} onPlay={handlePlay} />
+            <CategoryRow title="👻 Terror" movies={getMoviesByCategory('terror')} onPlay={handlePlay} />
           </>
         )}
       </div>
 
-      {/* Footer */}
       <Footer />
 
-      {/* Movie Detail Modal */}
-      <MovieModal
-        movie={selectedMovie}
-        onClose={() => setSelectedMovie(null)}
-        onPlay={handlePlay}
-      />
+      <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} onPlay={handlePlay} />
 
-      {/* Video Player */}
-      {playingMovie && (
-        <VideoPlayer
-          movie={playingMovie}
-          onClose={() => setPlayingMovie(null)}
-        />
-      )}
+      {playingMovie && <VideoPlayer movie={playingMovie} onClose={() => setPlayingMovie(null)} />}
+
+      <AdminPanel
+        isOpen={showAdmin}
+        onClose={() => setShowAdmin(false)}
+        movies={movies}
+        onAddMovie={handleAddMovie}
+        onUpdateMovie={handleUpdateMovie}
+        onDeleteMovie={handleDeleteMovie}
+      />
     </main>
   )
 }

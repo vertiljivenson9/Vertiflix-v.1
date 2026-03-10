@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { X, Play, Pause, Volume2, VolumeX, Subtitles, Languages, ChevronDown, Maximize, Minimize, Zap, Star, Film, Ghost, Heart, Rocket, Laugh, Globe } from 'lucide-react'
+import { X, Play, Pause, Volume2, VolumeX, Subtitles, Languages, ChevronDown, Maximize, Minimize, Loader2, AlertCircle } from 'lucide-react'
 import type { Movie } from '@/types'
 
 interface CoverPlayerProps {
@@ -86,6 +86,8 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
   const [showControls, setShowControls] = useState(true)
   const [showLangMenu, setShowLangMenu] = useState(false)
   const [subtitleLang, setSubtitleLang] = useState<SubtitleLang>('es')
@@ -93,11 +95,20 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait')
   const [videoStarted, setVideoStarted] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [buffered, setBuffered] = useState(0)
+  const [error, setError] = useState<string | null>(null)
   
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const hideTimer = useRef<NodeJS.Timeout>()
-  const progressInterval = useRef<NodeJS.Timeout>()
+
+  // Detect video type
+  const isTelegram = movie.videoUrl?.includes('t.me') || movie.videoUrl?.includes('telegram.org') || movie.id?.startsWith('tg_')
+  const isGoogleDrive = movie.videoUrl?.includes('drive.google.com')
+  const isYouTube = movie.videoUrl?.includes('youtube') || movie.videoUrl?.includes('youtu.be')
+  const isDirectVideo = !isYouTube && !isGoogleDrive && movie.videoUrl && !movie.videoUrl.includes('t.me')
 
   // Detect orientation
   useEffect(() => {
@@ -117,51 +128,117 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
     return () => { if (hideTimer.current) clearTimeout(hideTimer.current) }
   }, [showControls, isPlaying])
 
-  // Progress simulation
-  useEffect(() => {
-    if (isPlaying && progress < 100) {
-      progressInterval.current = setInterval(() => setProgress(p => Math.min(p + 0.1, 100)), 100)
-      return () => { if (progressInterval.current) clearInterval(progressInterval.current) }
-    }
-  }, [isPlaying, progress])
+  // Video event handlers
+  const handleVideoLoadStart = () => {
+    setIsLoading(true)
+    setError(null)
+  }
 
-  const displayedSubtitle = useMemo(() => {
-    if (!showSubtitles || !isPlaying) return ''
-    const sceneIndex = Math.floor(progress / 3) * 3
-    return SCENE_SUBTITLES[subtitleLang][sceneIndex] || ''
-  }, [progress, subtitleLang, showSubtitles, isPlaying])
+  const handleVideoCanPlay = () => {
+    setIsLoading(false)
+    setError(null)
+  }
 
-  const formatTime = useCallback((p: number) => {
-    const total = movie.duration * 60
-    const current = Math.floor((p / 100) * total)
-    const m = Math.floor(current / 60)
-    const s = current % 60
-    return `${m}:${s.toString().padStart(2, '0')}`
-  }, [movie.duration])
-
-  // Force play video via postMessage to YouTube iframe
-  const forcePlay = useCallback(() => {
-    if (iframeRef.current) {
-      // YouTube iframe API postMessage
-      iframeRef.current.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', '*')
-    }
+  const handleVideoPlaying = () => {
     setIsPlaying(true)
     setVideoStarted(true)
-  }, [])
+    setIsLoading(false)
+  }
 
-  const handlePlay = () => {
-    if (!videoStarted) {
-      forcePlay()
-    } else {
-      setIsPlaying(!isPlaying)
-      if (!isPlaying && iframeRef.current) {
-        iframeRef.current.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', '*')
-      } else if (iframeRef.current) {
-        iframeRef.current.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*')
-      }
+  const handleVideoPause = () => {
+    setIsPlaying(false)
+  }
+
+  const handleVideoTimeUpdate = () => {
+    if (videoRef.current) {
+      const current = videoRef.current.currentTime
+      const total = videoRef.current.duration
+      setCurrentTime(current)
+      setDuration(total)
+      setProgress((current / total) * 100)
     }
   }
-  
+
+  const handleVideoProgress = () => {
+    if (videoRef.current?.buffered.length) {
+      const bufferedEnd = videoRef.current.buffered.end(videoRef.current.buffered.length - 1)
+      const total = videoRef.current.duration
+      setBuffered((bufferedEnd / total) * 100)
+    }
+  }
+
+  const handleVideoError = () => {
+    setError('No se pudo cargar el video. Intenta de nuevo.')
+    setIsLoading(false)
+  }
+
+  const handleVideoWaiting = () => {
+    setIsLoading(true)
+  }
+
+  // Format time
+  const formatTime = useCallback((seconds: number) => {
+    if (!seconds || isNaN(seconds)) return '0:00'
+    const m = Math.floor(seconds / 60)
+    const s = Math.floor(seconds % 60)
+    return `${m}:${s.toString().padStart(2, '0')}`
+  }, [])
+
+  const formatTotalTime = useCallback(() => {
+    if (duration && !isNaN(duration)) {
+      return formatTime(duration)
+    }
+    return movie.duration ? `${movie.duration}:00` : '0:00'
+  }, [duration, movie.duration, formatTime])
+
+  // Play video
+  const handlePlay = useCallback(async () => {
+    // For HTML5 video (Telegram, direct links)
+    if (videoRef.current) {
+      try {
+        if (isPlaying) {
+          videoRef.current.pause()
+        } else {
+          await videoRef.current.play()
+          setVideoStarted(true)
+        }
+      } catch (err) {
+        console.error('Video play error:', err)
+        setError('Error al reproducir. Intenta de nuevo.')
+      }
+      return
+    }
+
+    // For YouTube iframe
+    if (iframeRef.current) {
+      if (!videoStarted) {
+        iframeRef.current.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', '*')
+        setVideoStarted(true)
+      } else {
+        if (isPlaying) {
+          iframeRef.current.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*')
+        } else {
+          iframeRef.current.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', '*')
+        }
+      }
+      setIsPlaying(!isPlaying)
+    }
+  }, [isPlaying, videoStarted])
+
+  // Seek
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const percent = ((e.clientX - rect.left) / rect.width) * 100
+    const newTime = (percent / 100) * (duration || movie.duration * 60)
+    
+    if (videoRef.current) {
+      videoRef.current.currentTime = newTime
+    }
+    setProgress(percent)
+    setCurrentTime(newTime)
+  }
+
+  // Fullscreen
   const toggleFullscreen = async () => {
     if (!containerRef.current) return
     if (!isFullscreen) {
@@ -173,6 +250,7 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
     }
   }
 
+  // YouTube embed URL
   const getEmbedUrl = () => {
     const url = movie.videoUrl || ''
     const autoplay = videoStarted ? 1 : 0
@@ -188,9 +266,12 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
     return url
   }
 
-  const isTelegram = movie.videoUrl?.includes('t.me')
-  const isGoogleDrive = movie.videoUrl?.includes('drive.google.com')
-  const isYouTube = movie.videoUrl?.includes('youtube') || movie.videoUrl?.includes('youtu.be')
+  // Subtitles
+  const displayedSubtitle = useMemo(() => {
+    if (!showSubtitles || !isPlaying || !duration) return ''
+    const sceneIndex = Math.floor(progress / 3) * 3
+    return SCENE_SUBTITLES[subtitleLang][sceneIndex] || ''
+  }, [progress, subtitleLang, showSubtitles, isPlaying, duration])
 
   return (
     <div ref={containerRef} className="fixed inset-0 z-50 bg-black" onMouseMove={() => setShowControls(true)}>
@@ -198,7 +279,6 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
       {/* LANDSCAPE MODE */}
       {orientation === 'landscape' && (
         <div className="absolute inset-0 bg-black flex items-center justify-center">
-          {/* Video container - tamaño ajustado */}
           <div 
             className="relative bg-black overflow-hidden rounded-lg"
             style={{ 
@@ -208,6 +288,39 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
               maxWidth: 'calc(85vh * 16 / 9)'
             }}
           >
+            {/* Thumbnail (shows before video starts) */}
+            {!videoStarted && !isPlaying && (
+              <img 
+                src={movie.thumbnail} 
+                alt={movie.title} 
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            )}
+
+            {/* Telegram/Direct Video - HTML5 Player */}
+            {(isTelegram || isDirectVideo) && (
+              <video
+                ref={videoRef}
+                src={movie.videoUrl}
+                className={`w-full h-full bg-black ${videoStarted ? 'opacity-100' : 'opacity-0'}`}
+                playsInline
+                preload="metadata"
+                onLoadStart={handleVideoLoadStart}
+                onCanPlay={handleVideoCanPlay}
+                onPlaying={handleVideoPlaying}
+                onPause={handleVideoPause}
+                onTimeUpdate={handleVideoTimeUpdate}
+                onProgress={handleVideoProgress}
+                onError={handleVideoError}
+                onWaiting={handleVideoWaiting}
+                onLoadedMetadata={() => {
+                  if (videoRef.current) {
+                    setDuration(videoRef.current.duration)
+                  }
+                }}
+              />
+            )}
+
             {/* YouTube Embed */}
             {isYouTube && (
               <iframe 
@@ -229,18 +342,42 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
               />
             )}
             
-            {/* Telegram */}
-            {isTelegram && (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#0088cc] to-[#0055aa]">
-                <Play className="w-16 h-16 text-white mb-4" fill="white" />
-                <p className="text-white text-lg mb-4">Contenido de Telegram</p>
-                <a href={movie.videoUrl} target="_blank" rel="noopener" className="bg-white text-[#0088cc] px-6 py-2 rounded-full font-medium">Ver en Telegram</a>
+            {/* Loading overlay */}
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                <Loader2 className="w-12 h-12 text-white animate-spin" />
+              </div>
+            )}
+
+            {/* Error overlay */}
+            {error && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80">
+                <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+                <p className="text-white text-center px-4">{error}</p>
+                <button 
+                  onClick={() => {
+                    setError(null)
+                    if (videoRef.current) {
+                      videoRef.current.load()
+                    }
+                  }}
+                  className="mt-4 px-4 py-2 bg-[#E50914] rounded text-white text-sm"
+                >
+                  Reintentar
+                </button>
               </div>
             )}
             
-            {/* Otros */}
-            {!isYouTube && !isGoogleDrive && !isTelegram && (
-              <img src={movie.thumbnail} alt={movie.title} className="w-full h-full object-cover" />
+            {/* Buffering indicator */}
+            {(isTelegram || isDirectVideo) && buffered < 100 && videoStarted && (
+              <div className="absolute bottom-16 left-0 right-0 px-4">
+                <div className="h-1 bg-white/20 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-blue-500/50 transition-all"
+                    style={{ width: `${buffered}%` }}
+                  />
+                </div>
+              </div>
             )}
             
             {/* Subtítulos */}
@@ -286,32 +423,57 @@ export default function CoverPlayer({ movie, onClose }: CoverPlayerProps) {
             </div>
             
             {/* Center Play Button */}
-            {isYouTube && !videoStarted && (
+            {!videoStarted && !isPlaying && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <button onClick={forcePlay} className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg hover:bg-red-700 transition">
-                  <Play className="w-8 h-8 text-white ml-1" fill="white" />
+                <button 
+                  onClick={handlePlay} 
+                  disabled={isLoading}
+                  className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center shadow-lg hover:bg-red-700 transition disabled:opacity-50"
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-8 h-8 text-white animate-spin" />
+                  ) : (
+                    <Play className="w-10 h-10 text-white ml-1" fill="white" />
+                  )}
                 </button>
               </div>
             )}
             
             {/* Bottom */}
             <div className="absolute bottom-0 left-0 right-0 p-3">
+              {/* Progress bar with buffer */}
               <div className="flex items-center gap-3 mb-2">
-                <span className="text-white text-xs">{formatTime(progress)}</span>
-                <div className="flex-1 h-1 bg-white/30 rounded-full cursor-pointer" onClick={e => {
-                  const rect = e.currentTarget.getBoundingClientRect()
-                  setProgress(((e.clientX - rect.left) / rect.width) * 100)
-                }}>
-                  <div className="h-full bg-red-600 rounded-full" style={{ width: `${progress}%` }} />
+                <span className="text-white text-xs min-w-[40px]">{formatTime(currentTime)}</span>
+                <div 
+                  className="flex-1 h-1 bg-white/30 rounded-full cursor-pointer relative"
+                  onClick={handleSeek}
+                >
+                  {/* Buffered */}
+                  {(isTelegram || isDirectVideo) && (
+                    <div 
+                      className="absolute h-full bg-blue-500/30 rounded-full"
+                      style={{ width: `${buffered}%` }}
+                    />
+                  )}
+                  {/* Progress */}
+                  <div className="h-full bg-red-600 rounded-full relative" style={{ width: `${progress}%` }}>
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-red-600 rounded-full border-2 border-white" />
+                  </div>
                 </div>
-                <span className="text-white text-xs">{formatTime(100)}</span>
+                <span className="text-white text-xs min-w-[40px]">{formatTotalTime()}</span>
               </div>
               <div className="flex justify-between">
                 <div className="flex gap-3">
-                  <button onClick={handlePlay} className="text-white">{isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}</button>
-                  <button onClick={() => setIsMuted(!isMuted)} className="text-white">{isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}</button>
+                  <button onClick={handlePlay} className="text-white">
+                    {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                  </button>
+                  <button onClick={() => setIsMuted(!isMuted)} className="text-white">
+                    {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                  </button>
                 </div>
-                <button onClick={toggleFullscreen} className="text-white">{isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}</button>
+                <button onClick={toggleFullscreen} className="text-white">
+                  {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                </button>
               </div>
             </div>
           </div>

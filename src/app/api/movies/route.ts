@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const runtime = 'edge';
 import { DEMO_MOVIES } from '@/lib/data';
 
 // In-memory storage for demo (resets on each deployment)

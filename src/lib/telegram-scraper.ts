@@ -15,6 +15,7 @@ export interface TelegramMovie {
   year?: number
   rating?: number
   hasMedia?: boolean
+  selected?: boolean
 }
 
 export interface ScrapingResult {
@@ -27,12 +28,11 @@ export interface ScrapingResult {
 
 // Extraer username del canal desde URL
 export function extractChannelUsername(url: string): string | null {
-  // Formatos: https://t.me/canal, https://t.me/+private, @canal, canal
   const patterns = [
-    /t\.me\/\+([a-zA-Z0-9_-]+)/,  // Canales privados
-    /t\.me\/([^\/\?]+)/,           // Canales públicos
-    /^@([a-zA-Z0-9_]+)/,           // Formato @canal
-    /^([a-zA-Z0-9_]{5,32})$/       // Solo nombre
+    /t\.me\/\+([a-zA-Z0-9_-]+)/,
+    /t\.me\/([^\/\?]+)/,
+    /^@([a-zA-Z0-9_]+)/,
+    /^([a-zA-Z0-9_]{5,32})$/
   ]
   
   for (const pattern of patterns) {
@@ -42,7 +42,7 @@ export function extractChannelUsername(url: string): string | null {
   return null
 }
 
-// Scrapear canal de Telegram (modo demo con datos realistas)
+// Scrapear canal - genera películas de demostración
 export async function scrapeTelegramChannel(
   channelUrl: string,
   limit: number = 20
@@ -55,11 +55,10 @@ export async function scrapeTelegramChannel(
       movies: [],
       total: 0,
       channelName: '',
-      error: 'URL de canal inválida. Ejemplo: https://t.me/nombre_canal'
+      error: 'URL de canal inválida'
     }
   }
 
-  // Generar películas de demostración
   const movies = generateDemoMovies(channelUsername, limit)
   
   return {
@@ -70,7 +69,7 @@ export async function scrapeTelegramChannel(
   }
 }
 
-// Películas de demostración con datos realistas
+// Películas de demostración
 function generateDemoMovies(channel: string, count: number): TelegramMovie[] {
   const sampleMovies = [
     { title: 'Dune: Parte Dos', year: 2024, genre: 'ciencia-ficcion', rating: 8.8 },
@@ -83,21 +82,21 @@ function generateDemoMovies(channel: string, count: number): TelegramMovie[] {
     { title: 'The Batman', year: 2022, genre: 'accion', rating: 8.1 },
     { title: 'Top Gun: Maverick', year: 2022, genre: 'accion', rating: 8.3 },
     { title: 'Avatar: El Camino del Agua', year: 2022, genre: 'ciencia-ficcion', rating: 7.9 },
+    { title: 'Demon Slayer: Tren Infinito', year: 2020, genre: 'anime', rating: 8.6 },
+    { title: 'Jujutsu Kaisen 0', year: 2021, genre: 'anime', rating: 8.4 },
+    { title: 'One Piece Film: Red', year: 2022, genre: 'anime', rating: 8.0 },
+    { title: 'Your Name', year: 2016, genre: 'anime', rating: 8.9 },
+    { title: 'Spirited Away', year: 2001, genre: 'anime', rating: 9.0 },
     { title: 'Interstellar', year: 2014, genre: 'ciencia-ficcion', rating: 8.7 },
     { title: 'Inception', year: 2010, genre: 'ciencia-ficcion', rating: 8.8 },
     { title: 'Parasite', year: 2019, genre: 'drama', rating: 8.6 },
     { title: 'Joker', year: 2019, genre: 'drama', rating: 8.4 },
     { title: 'Avengers: Endgame', year: 2019, genre: 'accion', rating: 8.4 },
     { title: 'Spider-Man: No Way Home', year: 2021, genre: 'accion', rating: 8.4 },
-    { title: 'Demon Slayer: Tren Infinito', year: 2020, genre: 'anime', rating: 8.6 },
-    { title: 'Your Name', year: 2016, genre: 'anime', rating: 8.9 },
-    { title: 'Spirited Away', year: 2001, genre: 'anime', rating: 9.0 },
+    { title: 'Get Out', year: 2017, genre: 'terror', rating: 7.8 },
+    { title: 'Hereditary', year: 2018, genre: 'terror', rating: 7.3 },
     { title: 'The Last of Us', year: 2023, genre: 'serie', rating: 8.8 },
     { title: 'House of the Dragon', year: 2022, genre: 'serie', rating: 8.5 },
-    { title: 'Wednesday', year: 2022, genre: 'serie', rating: 8.3 },
-    { title: 'Breaking Bad', year: 2008, genre: 'serie', rating: 9.5 },
-    { title: 'Game of Thrones', year: 2011, genre: 'serie', rating: 9.3 },
-    { title: 'Stranger Things T4', year: 2022, genre: 'serie', rating: 8.7 },
   ]
 
   const thumbnails = [
@@ -126,6 +125,7 @@ function generateDemoMovies(channel: string, count: number): TelegramMovie[] {
     category: movie.genre,
     year: movie.year,
     rating: movie.rating,
-    hasMedia: true
+    hasMedia: true,
+    selected: true
   }))
 }

@@ -1,90 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getAllMovies, addMovie, deleteMovie, getServerSupabase } from '@/lib/supabase'
 import { DEMO_MOVIES } from '@/lib/data'
 import type { Movie } from '@/types'
-import fs from 'fs'
-import path from 'path'
 
 export const runtime = 'nodejs'
-
-// Ruta del archivo de películas de Telegram
-const DATA_DIR = path.join(process.cwd(), 'data')
-const MOVIES_FILE = path.join(DATA_DIR, 'telegram-movies.json')
-
-// Variable global para almacenar películas en memoria (demo)
-let moviesStore: Movie[] = [...DEMO_MOVIES]
-
-// Cargar películas de Telegram
-function loadTelegramMovies(): Movie[] {
-  try {
-    if (fs.existsSync(MOVIES_FILE)) {
-      const data = fs.readFileSync(MOVIES_FILE, 'utf-8')
-      const tgMovies = JSON.parse(data)
-      
-      // Convertir a formato Movie y solo las aprobadas
-      return tgMovies
-        .filter((m: { approved: boolean }) => m.approved)
-        .map((m: {
-          id: string
-          title: string
-          description: string
-          thumbnail: string
-          videoUrl: string
-          category: string
-          year: number
-          duration: number
-          rating: number
-          language: string
-          addedAt: string
-          telegramLink?: string
-          channelMessageId?: number
-          channelUsername?: string
-          fileId?: string
-        }) => ({
-          id: m.id,
-          title: m.title,
-          description: m.description,
-          thumbnail: m.thumbnail,
-          videoUrl: m.videoUrl,
-          category: m.category,
-          year: m.year,
-          duration: m.duration,
-          rating: m.rating,
-          featured: false,
-          language: m.language || 'Español',
-          createdAt: new Date(m.addedAt || Date.now()),
-          updatedAt: new Date(m.addedAt || Date.now()),
-          // Campos para Telegram
-          telegramLink: m.telegramLink,
-          channelMessageId: m.channelMessageId,
-          fileId: m.fileId,
-        }))
-    }
-  } catch (error) {
-    console.error('Error loading Telegram movies:', error)
-  }
-  return []
-}
 
 // GET - Obtener todas las películas
 export async function GET() {
   try {
-    // Cargar películas de Telegram
-    const telegramMovies = loadTelegramMovies()
+    // Intentar obtener de Supabase
+    const supabaseMovies = await getAllMovies()
     
-    // Combinar con películas demo/store
-    const allMovies = [...moviesStore, ...telegramMovies]
+    if (supabaseMovies && supabaseMovies.length > 0) {
+      // Convertir a formato de la app
+      const movies: Movie[] = supabaseMovies.map((m: Record<string, unknown>) => ({
+        id: m.id as string,
+        title: m.title as string,
+        description: m.description as string | null,
+        thumbnail: m.thumbnail as string,
+        videoUrl: (m.video_url || m.videoUrl) as string,
+        category: m.category as string,
+        year: m.year as number,
+        duration: m.duration as number,
+        rating: m.rating as number,
+        featured: (m.featured as boolean) || false,
+        language: (m.language as string) || 'Español',
+        createdAt: new Date(m.created_at as string),
+        updatedAt: new Date(m.updated_at as string),
+        // Campos extra para Telegram
+        telegramLink: m.telegram_link || m.telegramLink || null,
+        channelMessageId: m.channel_message_id || m.channelMessageId || null,
+        fileId: m.file_id || m.fileId || null,
+      }))
+      
+      return NextResponse.json({ movies })
+    }
     
-    // Ordenar por fecha de creación (más recientes primero)
-    allMovies.sort((a, b) => {
-      const dateA = a.createdAt?.getTime() || 0
-      const dateB = b.createdAt?.getTime() || 0
-      return dateB - dateA
-    })
+    // Fallback a películas demo si no hay datos
+    return NextResponse.json({ movies: DEMO_MOVIES })
     
-    return NextResponse.json({ movies: allMovies })
   } catch (error) {
     console.error('Error fetching movies:', error)
-    return NextResponse.json({ movies: moviesStore })
+    return NextResponse.json({ movies: DEMO_MOVIES })
   }
 }
 
@@ -99,26 +56,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const newMovie: Movie = {
-      id: Date.now().toString(),
+    // Agregar a Supabase
+    const saved = await addMovie({
       title: body.title,
       description: body.description || '',
       thumbnail: body.thumbnail || 'https://picsum.photos/500/750',
-      videoUrl: body.videoUrl || body.video_url || '',
+      video_url: body.videoUrl || body.video_url || '',
       category: body.category || 'otros',
       year: body.year || 2024,
       duration: body.duration || 0,
       rating: body.rating || 0,
       featured: body.featured || false,
-      language: body.language || 'Español',
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      language: body.language || 'Español'
+    })
+
+    if (saved) {
+      const newMovie: Movie = {
+        id: saved.id,
+        title: saved.title,
+        description: saved.description,
+        thumbnail: saved.thumbnail,
+        videoUrl: saved.video_url,
+        category: saved.category,
+        year: saved.year,
+        duration: saved.duration,
+        rating: saved.rating,
+        featured: saved.featured,
+        language: saved.language,
+        createdAt: new Date(saved.created_at),
+        updatedAt: new Date(saved.updated_at),
+      }
+      
+      return NextResponse.json({ movie: newMovie, success: true })
     }
-
-    // Agregar a la tienda en memoria
-    moviesStore.push(newMovie)
-
-    return NextResponse.json({ movie: newMovie, success: true })
+    
+    return NextResponse.json({ error: 'Error al crear película' }, { status: 500 })
+    
   } catch (error) {
     console.error('Error creating movie:', error)
     return NextResponse.json({ error: 'Error al crear película' }, { status: 500 })
@@ -141,26 +114,30 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
     }
     
-    // Buscar en memoria
-    const index = moviesStore.findIndex(m => m.id === movieId)
-    if (index !== -1) {
-      moviesStore.splice(index, 1)
-      return NextResponse.json({ success: true, source: 'memory' })
+    const supabase = getServerSupabase()
+    
+    // Intentar eliminar de movies
+    let { error: error1 } = await supabase
+      .from('movies')
+      .delete()
+      .eq('id', movieId)
+    
+    if (!error1) {
+      return NextResponse.json({ success: true, source: 'movies' })
     }
     
-    // Buscar en Telegram movies
-    if (fs.existsSync(MOVIES_FILE)) {
-      const data = fs.readFileSync(MOVIES_FILE, 'utf-8')
-      const tgMovies = JSON.parse(data)
-      const filteredMovies = tgMovies.filter((m: { id: string }) => m.id !== movieId)
-      
-      if (filteredMovies.length < tgMovies.length) {
-        fs.writeFileSync(MOVIES_FILE, JSON.stringify(filteredMovies, null, 2))
-        return NextResponse.json({ success: true, source: 'telegram' })
-      }
+    // Intentar eliminar de telegram_movies
+    let { error: error2 } = await supabase
+      .from('telegram_movies')
+      .delete()
+      .eq('id', movieId)
+    
+    if (!error2) {
+      return NextResponse.json({ success: true, source: 'telegram_movies' })
     }
     
     return NextResponse.json({ error: 'Película no encontrada' }, { status: 404 })
+    
   } catch (error) {
     console.error('Error deleting movie:', error)
     return NextResponse.json({ error: 'Error al eliminar' }, { status: 500 })

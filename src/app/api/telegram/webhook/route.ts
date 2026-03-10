@@ -6,6 +6,8 @@ export const runtime = 'nodejs'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'
+// CANAL donde se publicarán los videos (sin @)
+const CHANNEL_USERNAME = process.env.TELEGRAM_CHANNEL || 'VertiflixVideos'
 
 // Ruta del archivo de persistencia
 const DATA_DIR = path.join(process.cwd(), 'data')
@@ -20,6 +22,7 @@ interface MovieSession {
   videoFileId?: string
   videoUrl?: string
   videoMessageId?: number
+  channelMessageId?: number  // ID del mensaje en el CANAL
   imageFileId?: string
   imageUrl?: string
   title?: string
@@ -49,10 +52,10 @@ interface TelegramMovie {
   fileName?: string
   fileSize?: number
   approved: boolean
-  // Para reproducción en Telegram
-  messageId?: number
-  chatId?: number
-  telegramLink?: string
+  // Para reproducción en Telegram - ESTO ES LO IMPORTANTE
+  channelMessageId?: number
+  channelUsername?: string
+  telegramLink?: string  // Link público: https://t.me/canal/message_id
 }
 
 // Categorías disponibles
@@ -127,7 +130,7 @@ async function sendMessage(chatId: number | string, text: string, options?: Reco
   if (!BOT_TOKEN) return
   
   try {
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -137,6 +140,7 @@ async function sendMessage(chatId: number | string, text: string, options?: Reco
         ...options
       })
     })
+    return await response.json()
   } catch (error) {
     console.error('Error sending message:', error)
   }
@@ -146,7 +150,7 @@ async function sendPhoto(chatId: number | string, photo: string, caption?: strin
   if (!BOT_TOKEN) return
   
   try {
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+    const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -156,9 +160,75 @@ async function sendPhoto(chatId: number | string, photo: string, caption?: strin
         parse_mode: 'Markdown'
       })
     })
+    return await response.json()
   } catch (error) {
     console.error('Error sending photo:', error)
   }
+}
+
+// Enviar video al CANAL y obtener message_id
+async function sendVideoToChannel(fileId: string, caption?: string): Promise<{ messageId: number; success: boolean }> {
+  if (!BOT_TOKEN) {
+    console.error('No BOT_TOKEN')
+    return { messageId: 0, success: false }
+  }
+  
+  try {
+    // Enviar video al canal
+    const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: `@${CHANNEL_USERNAME}`,
+        video: fileId,
+        caption: caption || '',
+        supports_streaming: true,
+        parse_mode: 'Markdown'
+      })
+    })
+    
+    const data = await response.json()
+    console.log('📤 Video sent to channel:', JSON.stringify(data, null, 2))
+    
+    if (data.ok && data.result?.message_id) {
+      return { messageId: data.result.message_id, success: true }
+    }
+  } catch (error) {
+    console.error('Error sending video to channel:', error)
+  }
+  
+  return { messageId: 0, success: false }
+}
+
+// Reenviar mensaje al canal
+async function forwardToChannel(chatId: number, messageId: number): Promise<{ messageId: number; success: boolean }> {
+  if (!BOT_TOKEN) {
+    console.error('No BOT_TOKEN')
+    return { messageId: 0, success: false }
+  }
+  
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/forwardMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: `@${CHANNEL_USERNAME}`,
+        from_chat_id: chatId,
+        message_id: messageId
+      })
+    })
+    
+    const data = await response.json()
+    console.log('📤 Message forwarded to channel:', JSON.stringify(data, null, 2))
+    
+    if (data.ok && data.result?.message_id) {
+      return { messageId: data.result.message_id, success: true }
+    }
+  } catch (error) {
+    console.error('Error forwarding to channel:', error)
+  }
+  
+  return { messageId: 0, success: false }
 }
 
 async function getFileUrl(fileId: string): Promise<string> {
@@ -255,23 +325,22 @@ export async function POST(request: NextRequest) {
 
     // ====== COMANDO /start ======
     if (text === '/start') {
-      // Limpiar sesión anterior
       delete sessions[chatId]
       saveSessions(sessions)
       
       await sendMessage(chatId,
         `🎬 *Vertiflix Bot*\n\n` +
         `¡Hola ${fromUser}! 👋\n\n` +
-        `Este bot te permite agregar películas a tu plataforma Vertiflix paso a paso.\n\n` +
+        `Este bot te permite agregar películas a tu plataforma Vertiflix.\n\n` +
         `*Para comenzar:*\n` +
-        `Envía el comando /nueva para iniciar el proceso de agregar una película.`
+        `Envía /nueva para agregar una película.\n\n` +
+        `Los videos se guardarán en nuestro canal público para poder reproducirlos.`
       , removeKeyboard())
       return NextResponse.json({ ok: true })
     }
 
     // ====== COMANDO /nueva ======
     if (text === '/nueva' || text === '/new') {
-      // Crear nueva sesión
       sessions[chatId] = {
         chatId,
         step: 'waiting_video',
@@ -285,7 +354,7 @@ export async function POST(request: NextRequest) {
         `Puedes enviar:\n` +
         `• Un video directamente (hasta 2GB)\n` +
         `• Un archivo de video (MP4, MKV, AVI)\n\n` +
-        `_El video se almacenará en Telegram y se reproducirá desde allí._`
+        `_El video se publicará en nuestro canal para poder verlo._`
       , getSimpleKeyboard())
       return NextResponse.json({ ok: true })
     }
@@ -307,25 +376,7 @@ export async function POST(request: NextRequest) {
         let list = `🎬 *Películas en Vertiflix (${movies.length}):*\n\n`
         movies.slice(-10).reverse().forEach((m, i) => {
           const cat = CATEGORIES.find(c => c.id === m.category)
-          list += `${i + 1}. ${cat?.emoji || '🎬'} *${m.title}*\n   📅 ${m.year} | ⭐ ${m.rating}\n`
-        })
-        if (movies.length > 10) {
-          list += `\n_...y ${movies.length - 10} más._`
-        }
-        await sendMessage(chatId, list)
-      }
-      return NextResponse.json({ ok: true })
-    }
-
-    // ====== COMANDO /pendientes ======
-    if (text === '/pendientes') {
-      const movies = loadMovies().filter(m => !m.approved)
-      if (movies.length === 0) {
-        await sendMessage(chatId, '✅ No hay películas pendientes de aprobación.')
-      } else {
-        let list = `⏳ *Películas pendientes (${movies.length}):*\n\n`
-        movies.forEach((m, i) => {
-          list += `${i + 1}. *${m.title}*\n   📅 ${m.year} | 📁 ${m.category}\n   🆔 \`${m.id}\`\n`
+          list += `${i + 1}. ${cat?.emoji || '🎬'} *${m.title}*\n   📅 ${m.year} | 🔗 [Ver](${m.telegramLink})\n`
         })
         await sendMessage(chatId, list)
       }
@@ -352,9 +403,12 @@ export async function POST(request: NextRequest) {
         const fileSize = video.file_size || 0
         const messageId = message.message_id
         
+        // IMPORTANTE: Reenviar el video al CANAL para tener un link público
+        const channelResult = await forwardToChannel(chatId, messageId)
+        
         session.videoFileId = fileId
-        session.videoUrl = await getFileUrl(fileId)
         session.videoMessageId = messageId
+        session.channelMessageId = channelResult.messageId || 0
         session.duration = Math.floor(duration / 60)
         session.fileName = caption || `Video_${Date.now()}`
         session.fileSize = fileSize
@@ -362,14 +416,16 @@ export async function POST(request: NextRequest) {
         sessions[chatId] = session
         saveSessions(sessions)
         
+        const channelInfo = channelResult.success 
+          ? `\n✅ Video publicado en el canal` 
+          : `\n⚠️ No se pudo publicar en el canal`
+        
         await sendMessage(chatId,
           `✅ *Video recibido*\n\n` +
           `📁 Tamaño: ${(fileSize / 1024 / 1024).toFixed(1)} MB\n` +
-          `⏱ Duración: ${Math.floor(duration / 60)}:${(duration % 60).toString().padStart(2, '0')}\n\n` +
+          `⏱ Duración: ${Math.floor(duration / 60)}:${(duration % 60).toString().padStart(2, '0')}${channelInfo}\n\n` +
           `Paso 2 de 5: Envía la *imagen/poster* de la película.\n\n` +
-          `Puedes:\n` +
-          `• Enviar una foto\n` +
-          `• Escribir "saltar" para usar imagen por defecto`
+          `Escribe "saltar" para usar imagen por defecto.`
         , getSimpleKeyboard())
         return NextResponse.json({ ok: true })
       }
@@ -383,9 +439,14 @@ export async function POST(request: NextRequest) {
         if (mimeType.startsWith('video/') || fileName.match(/\.(mp4|mkv|avi|mov|webm)$/i)) {
           const fileId = doc.file_id
           const fileSize = doc.file_size || 0
+          const messageId = message.message_id
+          
+          // Reenviar al canal
+          const channelResult = await forwardToChannel(chatId, messageId)
           
           session.videoFileId = fileId
-          session.videoUrl = await getFileUrl(fileId)
+          session.videoMessageId = messageId
+          session.channelMessageId = channelResult.messageId || 0
           session.fileName = fileName
           session.fileSize = fileSize
           session.duration = 120
@@ -396,44 +457,40 @@ export async function POST(request: NextRequest) {
           await sendMessage(chatId,
             `✅ *Video recibido*\n\n` +
             `📄 Archivo: ${fileName}\n` +
-            `📁 Tamaño: ${(fileSize / 1024 / 1024).toFixed(1)} MB\n\n` +
+            `📁 Tamaño: ${(fileSize / 1024 / 1024).toFixed(1)} MB\n` +
+            `${channelResult.success ? '✅ Publicado en canal' : '⚠️ Error en canal'}\n\n` +
             `Paso 2 de 5: Envía la *imagen/poster* de la película.\n\n` +
             `Escribe "saltar" para usar imagen por defecto.`
           , getSimpleKeyboard())
           return NextResponse.json({ ok: true })
         } else {
-          await sendMessage(chatId, '❌ El archivo debe ser un video (MP4, MKV, AVI, MOV, WEBM).\n\nEnvía un video válido.')
+          await sendMessage(chatId, '❌ El archivo debe ser un video (MP4, MKV, AVI, MOV, WEBM).')
           return NextResponse.json({ ok: true })
         }
       }
       
-      // No es video
-      await sendMessage(chatId, '❌ Por favor envía un *video*.\n\nPuedes enviar un archivo de video o grabar uno directamente.')
+      await sendMessage(chatId, '❌ Por favor envía un *video*.')
       return NextResponse.json({ ok: true })
     }
 
     // ====== PASO 2: ESPERANDO IMAGEN ======
     if (session.step === 'waiting_image') {
-      // Foto enviada
       if (message.photo) {
-        const photo = message.photo[message.photo.length - 1] // La más grande
-        const fileId = photo.file_id
+        const photo = message.photo[message.photo.length - 1]
         
-        session.imageFileId = fileId
-        session.imageUrl = await getFileUrl(fileId)
+        session.imageFileId = photo.file_id
+        session.imageUrl = await getFileUrl(photo.file_id)
         session.step = 'waiting_title'
         sessions[chatId] = session
         saveSessions(sessions)
         
         await sendMessage(chatId,
           `✅ *Imagen recibida*\n\n` +
-          `Paso 3 de 5: Escribe el *título* de la película.\n\n` +
-          `Ejemplo: Dune: Parte Dos`
+          `Paso 3 de 5: Escribe el *título* de la película.`
         , getSimpleKeyboard())
         return NextResponse.json({ ok: true })
       }
       
-      // Saltar
       if (text.toLowerCase() === 'saltar' || text.toLowerCase() === 'skip') {
         session.imageUrl = 'default'
         session.step = 'waiting_title'
@@ -441,14 +498,13 @@ export async function POST(request: NextRequest) {
         saveSessions(sessions)
         
         await sendMessage(chatId,
-          `⏭ Imagen por defecto seleccionada.\n\n` +
-          `Paso 3 de 5: Escribe el *título* de la película.\n\n` +
-          `Ejemplo: Dune: Parte Dos`
+          `⏭ Imagen por defecto.\n\n` +
+          `Paso 3 de 5: Escribe el *título* de la película.`
         , getSimpleKeyboard())
         return NextResponse.json({ ok: true })
       }
       
-      await sendMessage(chatId, '❌ Por favor envía una *imagen* o escribe "saltar" para usar una por defecto.')
+      await sendMessage(chatId, '❌ Envía una *imagen* o escribe "saltar".')
       return NextResponse.json({ ok: true })
     }
 
@@ -462,13 +518,12 @@ export async function POST(request: NextRequest) {
         
         await sendMessage(chatId,
           `✅ *Título:* ${session.title}\n\n` +
-          `Paso 4 de 5: Escribe el *año* de la película.\n\n` +
-          `Ejemplo: 2024`
+          `Paso 4 de 5: Escribe el *año* de la película.`
         , getSimpleKeyboard())
         return NextResponse.json({ ok: true })
       }
       
-      await sendMessage(chatId, '❌ Por favor escribe un título válido.')
+      await sendMessage(chatId, '❌ Escribe un título válido.')
       return NextResponse.json({ ok: true })
     }
 
@@ -486,13 +541,13 @@ export async function POST(request: NextRequest) {
           
           await sendMessage(chatId,
             `✅ *Año:* ${year}\n\n` +
-            `Paso 5 de 5: Selecciona la *categoría* de la película.`
+            `Paso 5 de 5: Selecciona la *categoría*.`
           , getCategoryKeyboard())
           return NextResponse.json({ ok: true })
         }
       }
       
-      await sendMessage(chatId, `❌ Por favor ingresa un año válido (ej: 2024).`)
+      await sendMessage(chatId, `❌ Ingresa un año válido (ej: 2024).`)
       return NextResponse.json({ ok: true })
     }
 
@@ -500,7 +555,6 @@ export async function POST(request: NextRequest) {
     if (session.step === 'waiting_category') {
       let selectedCategory: string | null = null
       
-      // Buscar categoría por texto
       for (const cat of CATEGORIES) {
         if (text.includes(cat.name) || text.includes(cat.emoji) || text.toLowerCase() === cat.id) {
           selectedCategory = cat.id
@@ -514,19 +568,25 @@ export async function POST(request: NextRequest) {
         sessions[chatId] = session
         saveSessions(sessions)
         
-        // Mostrar resumen
         const cat = CATEGORIES.find(c => c.id === selectedCategory)
+        
+        // Generar el LINK PÚBLICO al video en el canal
+        const telegramLink = session.channelMessageId 
+          ? `https://t.me/${CHANNEL_USERNAME}/${session.channelMessageId}`
+          : null
+        
         const summary = 
           `📋 *Resumen de la Película*\n\n` +
           `🎬 *Título:* ${session.title}\n` +
           `📅 *Año:* ${session.year}\n` +
           `📁 *Categoría:* ${cat?.emoji} ${cat?.name}\n` +
           `⏱ *Duración:* ${session.duration} min\n` +
-          `📁 *Tamaño:* ${session.fileSize ? (session.fileSize / 1024 / 1024).toFixed(1) + ' MB' : 'N/A'}\n\n` +
+          `📁 *Tamaño:* ${session.fileSize ? (session.fileSize / 1024 / 1024).toFixed(1) + ' MB' : 'N/A'}\n` +
+          `${telegramLink ? `🔗 *Link:* [Ver en Telegram](${telegramLink})\n` : ''}\n` +
           `¿Deseas guardar esta película?`
         
         if (session.imageUrl && session.imageUrl !== 'default') {
-          await sendPhoto(chatId, session.imageUrl, summary)
+          await sendPhoto(chatId, session.imageFileId!, summary)
           await sendMessage(chatId, 'Selecciona una opción:', getConfirmKeyboard())
         } else {
           await sendMessage(chatId, summary, getConfirmKeyboard())
@@ -534,17 +594,15 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ ok: true })
       }
       
-      await sendMessage(chatId, '❌ Por favor selecciona una categoría del teclado.')
+      await sendMessage(chatId, '❌ Selecciona una categoría del teclado.')
       return NextResponse.json({ ok: true })
     }
 
     // ====== CONFIRMACIÓN ======
     if (session.step === 'confirming') {
-      // Guardar
       if (text === '✅ Guardar') {
         const cat = CATEGORIES.find(c => c.id === session.category)
         
-        // Thumbnail por defecto según categoría si no hay imagen
         let thumbnailUrl = session.imageUrl
         if (!thumbnailUrl || thumbnailUrl === 'default') {
           const defaultThumbnails: Record<string, string> = {
@@ -562,16 +620,17 @@ export async function POST(request: NextRequest) {
           thumbnailUrl = defaultThumbnails[session.category!] || defaultThumbnails['otros']
         }
         
-        // Crear enlace de Telegram para el video
-        // El usuario puede ir directamente al mensaje con el video
-        const telegramLink = `https://t.me/VertiflixBot?start=play_${session.videoMessageId || ''}`
+        // EL LINK PÚBLICO - ESTO ES LO IMPORTANTE
+        const telegramLink = session.channelMessageId 
+          ? `https://t.me/${CHANNEL_USERNAME}/${session.channelMessageId}`
+          : `https://t.me/${CHANNEL_USERNAME}`
         
         const movie: TelegramMovie = {
-          id: `tg_${Date.now()}_${session.videoFileId?.substring(0, 8) || 'movie'}`,
+          id: `tg_${Date.now()}_${session.channelMessageId || session.videoFileId?.substring(0, 8) || 'movie'}`,
           title: session.title!,
           description: `Agregado desde Telegram por ${fullName}`,
           thumbnail: thumbnailUrl!,
-          videoUrl: session.videoUrl!,
+          videoUrl: telegramLink, // El link para reproducir
           fileId: session.videoFileId,
           thumbnailFileId: session.imageFileId,
           category: session.category!,
@@ -584,9 +643,9 @@ export async function POST(request: NextRequest) {
           fileName: session.fileName,
           fileSize: session.fileSize,
           approved: true,
-          // Para reproducción en Telegram
-          messageId: session.videoMessageId,
-          chatId: chatId,
+          // Datos para reproducción
+          channelMessageId: session.channelMessageId,
+          channelUsername: CHANNEL_USERNAME,
           telegramLink: telegramLink
         }
         
@@ -594,21 +653,20 @@ export async function POST(request: NextRequest) {
         movies.push(movie)
         saveMovies(movies)
         
-        // Limpiar sesión
         delete sessions[chatId]
         saveSessions(sessions)
         
         await sendMessage(chatId,
-          `✅ *¡Película guardada exitosamente!*\n\n` +
+          `✅ *¡Película guardada!*\n\n` +
           `🎬 *${movie.title}*\n` +
           `${cat?.emoji} ${cat?.name} | ${movie.year}\n\n` +
-          `La película ya está disponible en Vertiflix.\n\n` +
-          `Envía /nueva para agregar otra película.`
+          `🔗 *Link:* [Ver en Telegram](${telegramLink})\n\n` +
+          `La película ya está disponible en Vertiflix.\n` +
+          `Envía /nueva para agregar otra.`
         , removeKeyboard())
         return NextResponse.json({ ok: true })
       }
       
-      // Editar
       if (text === '✏️ Editar') {
         session.step = 'waiting_title'
         sessions[chatId] = session
@@ -616,12 +674,12 @@ export async function POST(request: NextRequest) {
         
         await sendMessage(chatId,
           `✏️ *Modo edición*\n\n` +
-          `Escribe el nuevo título (o el mismo para mantenerlo):`
+          `Escribe el nuevo título:`
         , getSimpleKeyboard())
         return NextResponse.json({ ok: true })
       }
       
-      await sendMessage(chatId, 'Por favor selecciona una opción del teclado.', getConfirmKeyboard())
+      await sendMessage(chatId, 'Selecciona una opción del teclado.', getConfirmKeyboard())
       return NextResponse.json({ ok: true })
     }
 
@@ -637,23 +695,18 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const password = searchParams.get('password')
-  const approved = searchParams.get('approved')
   
   if (password !== ADMIN_PASSWORD) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
   
-  let movies = loadMovies()
-  
-  // Filtrar por aprobación si se especifica
-  if (approved !== null) {
-    movies = movies.filter(m => approved === 'true' ? m.approved : !m.approved)
-  }
+  const movies = loadMovies()
   
   return NextResponse.json({ 
     movies,
     total: movies.length,
-    categories: CATEGORIES
+    categories: CATEGORIES,
+    channel: CHANNEL_USERNAME
   })
 }
 

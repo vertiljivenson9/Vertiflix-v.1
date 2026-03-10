@@ -35,6 +35,10 @@ function loadTelegramMovies(): Movie[] {
           rating: number
           language: string
           addedAt: string
+          telegramLink?: string
+          channelMessageId?: number
+          channelUsername?: string
+          fileId?: string
         }) => ({
           id: m.id,
           title: m.title,
@@ -49,6 +53,10 @@ function loadTelegramMovies(): Movie[] {
           language: m.language || 'Español',
           createdAt: new Date(m.addedAt || Date.now()),
           updatedAt: new Date(m.addedAt || Date.now()),
+          // Campos para Telegram
+          telegramLink: m.telegramLink,
+          channelMessageId: m.channelMessageId,
+          fileId: m.fileId,
         }))
     }
   } catch (error) {

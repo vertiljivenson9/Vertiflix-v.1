@@ -4,6 +4,42 @@
 Migrating Vertiflix streaming platform from vanilla HTML/CSS/JS to Next.js 15 with Netflix-style UI.
 
 ---
+## Task ID: 5 - Telegram Deep Link Video Playback
+### Work Task
+Implementar sistema de reproducción de videos de Telegram con transición animada y deep links.
+
+### Problema
+Los videos de Telegram no pueden embeberse directamente como YouTube. Necesitábamos una forma de reproducirlos sin que el usuario sienta que sale de la app.
+
+### Solución Implementada
+- **Capa de Transición Animada**: Cuando el usuario hace clic en play:
+  1. Se muestra animación "Conectando con Telegram..."
+  2. Logo de Telegram con efecto pulse
+  3. Barra de progreso visual
+  4. Se abre Telegram con deep link al video específico
+
+- **Deep Links de Telegram**:
+  - Formato: `https://t.me/VertiflixBot?start=play_{messageId}`
+  - También intenta abrir app nativa: `tg://resolve?domain=VertiflixBot`
+
+- **Datos Guardados**:
+  - `messageId`: ID del mensaje con el video
+  - `chatId`: ID del chat del usuario
+  - `telegramLink`: Enlace directo al video
+  - `fileId`: ID del archivo de Telegram
+
+### UX Mejorado
+- El usuario ve una transición suave
+- La animación disimula el cambio de app
+- El icono de Telegram en el botón de play indica que abrirá Telegram
+- El video se reproduce directamente en Telegram
+
+### Archivos Modificados
+- `src/app/api/telegram/webhook/route.ts`: Guardar message_id y crear telegramLink
+- `src/components/player/CoverPlayer.tsx`: Nueva capa de transición animada
+- `src/types/index.ts`: Campos fileId, telegramLink, messageId, chatId
+
+---
 ## Task ID: 4 - HTML5 Video Player for Telegram Videos
 ### Work Task
 Implementar reproductor de video HTML5 para reproducir videos de Telegram directamente con streaming progresivo.

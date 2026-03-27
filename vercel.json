@@ -1,0 +1,47 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "bun run build",
+  "installCommand": "bun install",
+  "devCommand": "bun run dev",
+  
+  "functions": {
+    "src/app/api/telegram/webhook/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/telegram/stream/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/stream/*/route.ts": {
+      "maxDuration": 300
+    }
+  },
+  
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/_next/static/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ],
+  
+  "rewrites": [
+    {
+      "source": "/api/telegram",
+      "destination": "/api/telegram/webhook"
+    }
+  ]
+}

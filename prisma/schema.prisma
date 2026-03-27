@@ -1,0 +1,146 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// PELÍCULAS AGREGADAS DESDE TELEGRAM
+// ============================================
+model TelegramMovie {
+  id                String   @id @default(uuid())
+  title             String
+  description       String?
+  thumbnail         String?
+  
+  // Video info
+  videoUrl          String?  @map("video_url")
+  fileId            String?  @map("file_id")
+  thumbnailFileId   String?  @map("thumbnail_file_id")
+  
+  // Metadata
+  category          String   @default("otros")
+  year              Int      @default(2024)
+  duration          Int      @default(120)
+  rating            Float    @default(7.0)
+  language          String   @default("Español")
+  
+  // File info
+  fileName          String?  @map("file_name")
+  fileSize          Float?   @map("file_size")
+  
+  // Telegram playback
+  channelMessageId  Float?   @map("channel_message_id")
+  channelUsername   String?  @default("VertiflixVideos") @map("channel_username")
+  telegramLink      String?  @map("telegram_link")
+  
+  // Admin
+  addedBy           String?  @map("added_by")
+  approved          Boolean  @default(true)
+  
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("telegram_movies")
+}
+
+// ============================================
+// PELÍCULAS AGREGADAS MANUALMENTE (ADMIN)
+// ============================================
+model Movie {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  thumbnail   String?
+  videoUrl    String?  @map("video_url")
+  category    String   @default("otros")
+  year        Int      @default(2024)
+  duration    Int      @default(0)
+  rating      Float    @default(0)
+  featured    Boolean  @default(false)
+  language    String   @default("Español")
+  
+  // Telegram MTProto streaming (NO usar videoUrl para Telegram)
+  channelUsername   String?  @map("channel_username")
+  channelMessageId  Int?     @map("channel_message_id")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("movies")
+}
+
+// ============================================
+// SESIONES DEL BOT DE TELEGRAM
+// ============================================
+model BotSession {
+  id                String   @id @default(uuid())
+  chatId            Float    @unique @map("chat_id")
+  step              String   @default("idle")
+  
+  // Video
+  videoFileId       String?  @map("video_file_id")
+  videoMessageId    Float?   @map("video_message_id")
+  channelMessageId  Float?   @map("channel_message_id")
+  
+  // Image
+  imageFileId       String?  @map("image_file_id")
+  imageUrl          String?  @map("image_url")
+  
+  // Metadata
+  title             String?
+  year              Int?
+  category          String?
+  duration          Int?
+  fileName          String?  @map("file_name")
+  fileSize          Float?   @map("file_size")
+  
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("bot_sessions")
+}
+
+// ============================================
+// USUARIOS DEL BOT DE TELEGRAM
+// ============================================
+model TelegramUser {
+  id          String   @id @default(uuid())
+  telegramId  Float    @unique @map("telegram_id")
+  username    String?
+  firstName   String?  @map("first_name")
+  lastName    String?  @map("last_name")
+  isAdmin     Boolean  @default(false) @map("is_admin")
+  favorites   String   @default("[]") // JSON array as string
+  createdAt   DateTime @default(now()) @map("created_at")
+  lastLogin   DateTime? @map("last_login")
+
+  @@map("users")
+}
+
+// ============================================
+// USUARIOS DE LA APP (legacy)
+// ============================================
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
